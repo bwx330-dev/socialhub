@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://socialhub-wine.vercel.app';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://socialhub-bxvv0.vercel.app';
 
     // Handle OAuth denial
     if (error) {
@@ -134,7 +134,7 @@ export async function GET(request: Request) {
     );
   } catch (error) {
     console.error('TikTok callback error:', error);
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://socialhub-wine.vercel.app';
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://socialhub-bxvv0.vercel.app';
     return NextResponse.redirect(
       `${appUrl}/dashboard/accounts?error=${encodeURIComponent('TikTok connection failed')}`
     );

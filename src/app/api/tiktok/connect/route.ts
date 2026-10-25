@@ -4,7 +4,7 @@ import { getTikTokAuthUrl } from '@/lib/tiktok';
 export const dynamic = 'force-dynamic';
 
 const DEFAULT_CLIENT_KEY = 'sbawme1rsldz5jtdej';
-const DEFAULT_REDIRECT_URI = 'https://socialhub-wine.vercel.app/api/tiktok/callback';
+const DEFAULT_REDIRECT_URI = 'https://socialhub-bxvv0.vercel.app/api/tiktok/callback';
 
 export async function GET() {
   try {
