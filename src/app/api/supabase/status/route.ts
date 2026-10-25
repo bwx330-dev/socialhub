@@ -5,16 +5,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!url || !key) {
-      return NextResponse.json({
-        configured: false,
-        tablesReady: false,
-        message: 'NEXT_PUBLIC_SUPABASE_URL atau NEXT_PUBLIC_SUPABASE_ANON_KEY belum diisi di .env.local',
-      });
-    }
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://rylmpuedkrwonsyeiqoi.supabase.co';
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ5bG1wdWVka3J3b25zeWVpcW9pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4ODk0NzgsImV4cCI6MjEwODQ2NTQ3OH0.zk_JWBE-zES7ACXKYZNw9UFk9albSih_qI8euduykAQ';
 
     const supabase = await createServerSupabaseClient();
 
@@ -25,7 +17,6 @@ export async function GET() {
       .limit(1);
 
     if (queryError) {
-      // 42P01 is PostgreSQL code for "relation does not exist" (table missing)
       if (queryError.code === '42P01') {
         return NextResponse.json({
           configured: true,
@@ -48,16 +39,14 @@ export async function GET() {
       configured: true,
       tablesReady: true,
       projectUrl: url,
-      message: 'Database Supabase terhubung & tabel posts aktif! ✅',
+      message: 'Koneksi database Supabase aktif & siap digunakan!',
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        configured: false,
-        tablesReady: false,
-        error: error instanceof Error ? error.message : 'Gagal cek status Supabase',
-      },
-      { status: 500 }
-    );
+    console.error('Supabase status error:', error);
+    return NextResponse.json({
+      configured: false,
+      tablesReady: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 }

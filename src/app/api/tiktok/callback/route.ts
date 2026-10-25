@@ -29,8 +29,8 @@ export async function GET(request: Request) {
       );
     }
 
-    const clientKey = process.env.TIKTOK_CLIENT_KEY;
-    const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+    const clientKey = process.env.TIKTOK_CLIENT_KEY || 'sbawme1rsldz5jtdej';
+    const clientSecret = process.env.TIKTOK_CLIENT_SECRET || 'sRo9TFc2nmezvFl8vRFojQXTWj14ZkjM';
     const redirectUri = process.env.TIKTOK_REDIRECT_URI || `${appUrl}/api/tiktok/callback`;
 
     if (!clientKey || !clientSecret) {

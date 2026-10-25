@@ -3,17 +3,13 @@ import { getTikTokAuthUrl } from '@/lib/tiktok';
 
 export const dynamic = 'force-dynamic';
 
+const DEFAULT_CLIENT_KEY = 'sbawme1rsldz5jtdej';
+const DEFAULT_REDIRECT_URI = 'https://socialhub-wine.vercel.app/api/tiktok/callback';
+
 export async function GET() {
   try {
-    const clientKey = process.env.TIKTOK_CLIENT_KEY;
-    const redirectUri = process.env.TIKTOK_REDIRECT_URI;
-
-    if (!clientKey || !redirectUri) {
-      return NextResponse.json(
-        { error: 'TIKTOK_CLIENT_KEY dan TIKTOK_REDIRECT_URI belum diatur di .env.local' },
-        { status: 500 }
-      );
-    }
+    const clientKey = process.env.TIKTOK_CLIENT_KEY || DEFAULT_CLIENT_KEY;
+    const redirectUri = process.env.TIKTOK_REDIRECT_URI || DEFAULT_REDIRECT_URI;
 
     const authUrl = getTikTokAuthUrl(clientKey, redirectUri);
 
