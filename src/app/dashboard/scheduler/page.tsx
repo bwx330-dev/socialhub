@@ -22,7 +22,7 @@ import {
   Clock,
   PlusCircle,
 } from 'lucide-react';
-import { Instagram } from '@/components/ui/icons';
+import { Instagram, TikTok } from '@/components/ui/icons';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -209,7 +209,7 @@ export default function SchedulerPage() {
                       {post.platform === 'instagram' ? (
                         <Instagram className="mr-1 h-3 w-3" />
                       ) : (
-                        <span className="mr-1">🎵</span>
+                        <TikTok className="mr-1.5 h-3.5 w-3.5" />
                       )}
                       {post.platform === 'instagram' ? 'Instagram' : 'TikTok'}
                     </Badge>

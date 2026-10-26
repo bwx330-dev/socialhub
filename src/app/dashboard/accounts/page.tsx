@@ -275,9 +275,7 @@ export default function AccountsPage() {
                           🟢 LIVE CONNECTED
                         </span>
                       </div>
-                      <p className="text-xs text-[#8b949e]">
-                        Akun Anda sudah 100% tersimpan di Supabase Cloud Database & terhubung ke sistem SocialHub. Fitur upload, analitik, dan perencanaan konten siap digunakan.
-                      </p>
+                      
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -471,23 +469,33 @@ export default function AccountsPage() {
             <p className="mb-4 text-xs text-[#8b949e] max-w-xs">
               Gunakan Meta App (Instagram Tester) gratis tanpa verifikasi bisnis
             </p>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                onClick={() => handleOAuthConnect('instagram')}
-                className="bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] hover:opacity-90 text-xs"
-              >
-                OAuth Meta
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleOpenAddModal('instagram')}
-                className="text-xs"
-              >
-                Input Cepat
-              </Button>
-            </div>
+            {accounts.some((a) => a.platform === 'instagram') ? (
+              <div className="flex flex-col items-center gap-1.5">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#3fb950]/30 bg-[#3fb950]/15 px-3 py-1.5 text-xs font-semibold text-[#3fb950]">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Akun Sudah Terhubung ({accounts.find((a) => a.platform === 'instagram')?.username})
+                </span>
+                <span className="text-[11px] text-[#8b949e]">Status Database & API Siap</span>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => handleOAuthConnect('instagram')}
+                  className="bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] hover:opacity-90 text-xs"
+                >
+                  OAuth Meta
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenAddModal('instagram')}
+                  className="text-xs"
+                >
+                  Input Cepat
+                </Button>
+              </div>
+            )}
           </Card>
 
           {/* Connect TikTok */}
@@ -499,23 +507,33 @@ export default function AccountsPage() {
             <p className="mb-4 text-xs text-[#8b949e] max-w-xs">
               Client Key sudah terkonfigurasi di sistem SocialHub
             </p>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                onClick={() => handleOAuthConnect('tiktok')}
-                className="bg-[#e6edf3] text-black hover:bg-[#c9d1d9] text-xs"
-              >
-                OAuth TikTok
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleOpenAddModal('tiktok')}
-                className="text-xs"
-              >
-                Input Cepat
-              </Button>
-            </div>
+            {accounts.some((a) => a.platform === 'tiktok') ? (
+              <div className="flex flex-col items-center gap-1.5">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#3fb950]/30 bg-[#3fb950]/15 px-3 py-1.5 text-xs font-semibold text-[#3fb950]">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Akun Sudah Terhubung ({accounts.find((a) => a.platform === 'tiktok')?.username})
+                </span>
+                <span className="text-[11px] text-[#8b949e]">Status API & Sandbox Aktif</span>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => handleOAuthConnect('tiktok')}
+                  className="bg-[#e6edf3] text-black hover:bg-[#c9d1d9] text-xs"
+                >
+                  OAuth TikTok
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOpenAddModal('tiktok')}
+                  className="text-xs"
+                >
+                  Input Cepat
+                </Button>
+              </div>
+            )}
           </Card>
         </div>
       </div>

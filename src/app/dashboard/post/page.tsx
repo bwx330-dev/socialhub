@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -17,7 +17,7 @@ import {
   CalendarCheck,
   ExternalLink,
 } from 'lucide-react';
-import { Instagram } from '@/components/ui/icons';
+import { Instagram, TikTok } from '@/components/ui/icons';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -203,7 +203,7 @@ export default function CreatePostPage() {
                     : 'border-[#30363d] text-[#8b949e] hover:border-[#e6edf3]/30'
                 }`}
             >
-              <span className="text-base">ðŸŽµ</span>
+              <TikTok className="h-4 w-4" />
               TikTok
             </button>
           </div>
@@ -395,7 +395,7 @@ export default function CreatePostPage() {
                 onClick={() => openAndPost('https://www.tiktok.com/upload', 'TikTok')}
                 className="flex items-center justify-center gap-1.5 rounded-xl border border-[#30363d] bg-[#21262d] py-2 text-xs font-medium text-[#e6edf3] hover:border-[#e6edf3]"
               >
-                <span className="text-xs">ðŸŽµ</span>
+                <TikTok className="h-3.5 w-3.5" />
                 Copy & Buka TikTok
                 <ExternalLink className="h-3 w-3 text-[#8b949e]" />
               </button>
@@ -476,7 +476,7 @@ export default function CreatePostPage() {
           <Card>
             <h3 className="mb-4 text-sm font-semibold text-[#e6edf3]">
               <span className="inline-flex items-center gap-2">
-                <span className="text-base">ðŸŽµ</span>
+                <TikTok className="h-4 w-4" />
                 TikTok Preview
               </span>
             </h3>
