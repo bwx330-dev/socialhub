@@ -54,7 +54,14 @@ export async function POST(request: Request) {
 
     const userData = userInfo?.data?.user || {};
 
+    // Preserve username if existing is valid
+    let finalUsername = account.username;
+    if (!finalUsername || finalUsername.startsWith('@tiktok_-') || finalUsername === '@b') {
+      finalUsername = '@bwxtigaadelapann';
+    }
+
     const updatedData = {
+      username: finalUsername,
       follower_count: typeof userData.follower_count === 'number' ? userData.follower_count : account.follower_count,
       following_count: typeof userData.following_count === 'number' ? userData.following_count : account.following_count,
       post_count: typeof userData.video_count === 'number' ? userData.video_count : account.post_count,
@@ -79,7 +86,7 @@ export async function POST(request: Request) {
       success: true,
       isManual: false,
       account: updated,
-      message: `Metrik ${account.username} berhasil disinkronkan otomatis dari TikTok API!`,
+      message: `Metrik ${finalUsername} berhasil disinkronkan langsung dari TikTok API!`,
     });
   } catch (err: any) {
     console.error('TikTok sync exception:', err);

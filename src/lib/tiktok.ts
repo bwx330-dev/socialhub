@@ -15,15 +15,37 @@ export class TikTokAPI {
   }
 
   async getUserInfo() {
-    const fields = 'open_id,union_id,avatar_url,display_name,bio_description,is_verified,follower_count,following_count,likes_count,video_count';
-    const res = await fetch(`${TIKTOK_API}/user/info/?fields=${fields}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${this.accessToken}`,
-      },
-      cache: 'no-store',
-    });
-    return res.json();
+    // Only request scopes authorized by TikTok Login Kit & User Info Stats
+    // Do NOT include bio_description or is_verified which trigger scope_not_authorized
+    const fields = 'open_id,union_id,avatar_url,display_name,follower_count,following_count,likes_count,video_count';
+    try {
+      const res = await fetch(`${TIKTOK_API}/user/info/?fields=${fields}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+        },
+        cache: 'no-store',
+      });
+      const data = await res.json();
+
+      // If scope_not_authorized happens, fallback to basic profile info
+      if (data?.error?.code === 'scope_not_authorized') {
+        const basicFields = 'open_id,union_id,avatar_url,display_name';
+        const fallbackRes = await fetch(`${TIKTOK_API}/user/info/?fields=${basicFields}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+          },
+          cache: 'no-store',
+        });
+        return fallbackRes.json();
+      }
+
+      return data;
+    } catch (err) {
+      console.error('Error calling TikTok getUserInfo:', err);
+      return { error: { code: 'fetch_failed', message: 'Failed to fetch user info from TikTok' } };
+    }
   }
 
   async getVideos(cursor?: string, maxCount = 20) {

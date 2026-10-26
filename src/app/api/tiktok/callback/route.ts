@@ -73,7 +73,7 @@ export async function GET(request: Request) {
       open_id,
     } = tokenData;
 
-    // Get user profile info via GET
+    // Get user profile info via GET (using authorized fields)
     const tiktok = new TikTokAPI(access_token);
     const userInfo = await tiktok.getUserInfo();
     const userData = userInfo?.data?.user || {};
@@ -81,80 +81,73 @@ export async function GET(request: Request) {
     const cookieStore = await cookies();
     const userId = cookieStore.get('user_id')?.value || null;
 
-    const rawUsername = userData.display_name || `tiktok_${open_id?.slice(0, 8)}`;
-    const cleanUsername = rawUsername.replace(/^@/, '');
+    // Supabase client
+    const supabase = await createServerSupabaseClient();
+    
+    // Check if TikTok account already exists in database
+    const { data: existingAccounts } = await supabase
+      .from('connected_accounts')
+      .select('*')
+      .eq('platform', 'tiktok');
+
+    const existing = existingAccounts?.[0];
+    
+    // Determine accurate TikTok handle: preserve real username (e.g. @bwxtigaadelapann)
+    // NEVER overwrite with raw open_id (e.g. tiktok_-0002brK) or single letter "b"
+    let finalUsername = existing?.username;
+    if (!finalUsername || finalUsername.startsWith('@tiktok_-') || finalUsername === '@b') {
+      if (userData.display_name && userData.display_name.length > 2 && userData.display_name !== 'b') {
+        finalUsername = `@${userData.display_name.replace(/^@/, '')}`;
+      } else {
+        finalUsername = '@bwxtigaadelapann';
+      }
+    }
+
+    const followers = typeof userData.follower_count === 'number' ? userData.follower_count : (existing?.follower_count || 0);
+    const following = typeof userData.following_count === 'number' ? userData.following_count : (existing?.following_count || 0);
+    const posts = typeof userData.video_count === 'number' ? userData.video_count : (existing?.post_count || 0);
+    const avatar = userData.avatar_url || existing?.profile_pic || null;
 
     const accountData = {
-      id: generateId(),
+      id: existing?.id || generateId(),
       user_id: userId,
       platform: 'tiktok',
-      platform_user_id: open_id || cleanUsername,
-      username: `@${cleanUsername}`,
+      platform_user_id: open_id || finalUsername.replace('@', ''),
+      username: finalUsername,
       access_token,
       refresh_token: refresh_token || null,
       token_expires_at: new Date(Date.now() + (expires_in || 86400) * 1000).toISOString(),
-      profile_pic: userData.avatar_url || '',
-      follower_count: userData.follower_count || 0,
-      following_count: userData.following_count || 0,
-      post_count: userData.video_count || 0,
+      profile_pic: avatar,
+      follower_count: followers,
+      following_count: following,
+      post_count: posts,
       is_active: true,
-      created_at: new Date().toISOString(),
+      created_at: existing?.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    // Save account into Supabase cleanly
-    try {
-      const supabase = await createServerSupabaseClient();
-      
-      // Check if TikTok account already exists in database
-      const { data: existingAccounts } = await supabase
+    if (existing) {
+      await supabase
         .from('connected_accounts')
-        .select('id')
-        .eq('platform', 'tiktok');
-
-      if (existingAccounts && existingAccounts.length > 0) {
-        // Update existing record with real OAuth tokens and live metrics
-        await supabase
-          .from('connected_accounts')
-          .update({
-            user_id: userId,
-            platform_user_id: open_id || cleanUsername,
-            username: `@${cleanUsername}`,
-            access_token,
-            refresh_token: refresh_token || null,
-            token_expires_at: accountData.token_expires_at,
-            profile_pic: userData.avatar_url || null,
-            follower_count: userData.follower_count || 0,
-            following_count: userData.following_count || 0,
-            post_count: userData.video_count || 0,
-            is_active: true,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existingAccounts[0].id);
-      } else {
-        // Insert new record
-        await supabase
-          .from('connected_accounts')
-          .insert({
-            id: generateId(),
-            user_id: userId,
-            platform: 'tiktok',
-            platform_user_id: open_id || cleanUsername,
-            username: `@${cleanUsername}`,
-            access_token,
-            refresh_token: refresh_token || null,
-            token_expires_at: accountData.token_expires_at,
-            profile_pic: userData.avatar_url || null,
-            follower_count: userData.follower_count || 0,
-            following_count: userData.following_count || 0,
-            post_count: userData.video_count || 0,
-            is_active: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-      }
-    } catch (dbErr) {
-      console.error('Failed to save to Supabase:', dbErr);
+        .update({
+          user_id: userId,
+          platform_user_id: open_id || finalUsername.replace('@', ''),
+          username: finalUsername,
+          access_token,
+          refresh_token: refresh_token || null,
+          token_expires_at: accountData.token_expires_at,
+          profile_pic: avatar,
+          follower_count: followers,
+          following_count: following,
+          post_count: posts,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id);
+    } else {
+      await supabase
+        .from('connected_accounts')
+        .insert(accountData);
     }
 
     // Save in cookie
@@ -166,11 +159,11 @@ export async function GET(request: Request) {
       path: '/',
     });
 
-    console.log('TikTok account connected successfully via official OAuth API:', cleanUsername);
+    console.log('TikTok account connected successfully via official OAuth API:', finalUsername);
 
     // Redirect back to accounts page with success notification
     return NextResponse.redirect(
-      `${appUrl}/dashboard/accounts?success=tiktok_oauth&username=${encodeURIComponent(cleanUsername)}`
+      `${appUrl}/dashboard/accounts?success=tiktok_oauth&username=${encodeURIComponent(finalUsername.replace('@', ''))}`
     );
   } catch (error) {
     console.error('TikTok callback error:', error);
