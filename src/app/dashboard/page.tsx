@@ -123,6 +123,25 @@ export default function DashboardPage() {
     }
 
     fetchData();
+
+    // Auto-update when user returns to tab or every 15 seconds
+    const handleFocus = () => fetchData();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchData();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchData();
+    }, 15000);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(interval);
+    };
   }, []);
 
   // Compute metrics from connected accounts & posts

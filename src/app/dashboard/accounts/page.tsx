@@ -10,8 +10,6 @@ import {
   Sparkles,
   CheckCircle2,
   FileText,
-  UserCheck,
-  RefreshCw,
   AlertTriangle,
   X,
 } from 'lucide-react';
@@ -53,7 +51,6 @@ export default function AccountsPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
 
   // Form state
   const [platform, setPlatform] = useState<'instagram' | 'tiktok'>('instagram');
@@ -63,24 +60,42 @@ export default function AccountsPage() {
   const [postCount, setPostCount] = useState('');
   const [profilePic, setProfilePic] = useState('');
 
-  // Fetch connected accounts from Supabase
-  const loadAccounts = async () => {
+  // Fetch connected accounts (auto-syncs TikTok in background)
+  const loadAccounts = async (showLoadingState = false) => {
     try {
-      setLoading(true);
+      if (showLoadingState) setLoading(true);
       const res = await fetch('/api/accounts');
       const data = await res.json();
       if (data.accounts) {
         setAccounts(data.accounts);
       }
     } catch {
-      toast.error('Gagal memuat akun tersimpan');
+      // silent background catch
     } finally {
-      setLoading(false);
+      if (showLoadingState) setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadAccounts();
+    loadAccounts(true);
+
+    // Auto-sync whenever user focuses window or returns to this tab
+    const handleFocus = () => loadAccounts(false);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        loadAccounts(false);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Auto-sync interval every 15 seconds while tab is active
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadAccounts(false);
+      }
+    }, 15000);
 
     // Check query params for OAuth status
     const urlParams = new URLSearchParams(window.location.search);
@@ -90,17 +105,23 @@ export default function AccountsPage() {
 
     if (successParam === 'tiktok_oauth' || successParam === 'tiktok') {
       toast.success(
-        `Berhasil terhubung ke TikTok Developer API (@${uName || 'akun'})! Metrik live & auto-update aktif.`,
+        `Berhasil terhubung ke TikTok Developer API (@${uName || 'akun'})! Metrik auto-sync real-time aktif.`,
         { duration: 6000 }
       );
       window.history.replaceState({}, '', window.location.pathname);
-      loadAccounts();
+      loadAccounts(false);
     } else if (errorParam) {
       toast.error(`Koneksi API gagal: ${decodeURIComponent(errorParam)}`, {
         duration: 7000,
       });
       window.history.replaceState({}, '', window.location.pathname);
     }
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(interval);
+    };
   }, []);
 
   const handleOpenAddModal = (defaultPlatform?: 'instagram' | 'tiktok') => {
@@ -147,20 +168,13 @@ export default function AccountsPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        if (data.needsMigration) {
-          toast.error(
-            'Tabel Supabase belum disiapkan. Jalankan script SQL di Supabase SQL Editor.',
-            { duration: 8000 }
-          );
-        } else {
-          toast.error(data.error || 'Gagal menyimpan akun');
-        }
+        toast.error(data.error || 'Gagal menyimpan akun');
         return;
       }
 
       toast.success(data.message || 'Akun berhasil disimpan!');
       setIsModalOpen(false);
-      loadAccounts();
+      loadAccounts(true);
     } catch {
       toast.error('Terjadi kesalahan koneksi');
     } finally {
@@ -176,34 +190,12 @@ export default function AccountsPage() {
       const data = await res.json();
       if (res.ok) {
         toast.success(`Akun ${name} berhasil diputuskan`);
-        loadAccounts();
+        loadAccounts(true);
       } else {
         toast.error(data.error || 'Gagal menghapus akun');
       }
     } catch {
       toast.error('Gagal menghubungi server');
-    }
-  };
-
-  const handleSyncTikTok = async () => {
-    setIsSyncing(true);
-    try {
-      const res = await fetch('/api/tiktok/sync', { method: 'POST' });
-      const data = await res.json();
-      if (data.isManual) {
-        toast.error(data.message, { duration: 7000 });
-      } else if (data.success) {
-        toast.success(data.message || 'Metrik TikTok berhasil disinkronkan langsung dari API!', {
-          duration: 5000,
-        });
-        loadAccounts();
-      } else {
-        toast.error(data.error || 'Gagal sinkronisasi dari TikTok API');
-      }
-    } catch {
-      toast.error('Gagal menghubungi server untuk sinkronisasi');
-    } finally {
-      setIsSyncing(false);
     }
   };
 
@@ -291,21 +283,15 @@ export default function AccountsPage() {
 
           <div className="flex items-center gap-2">
             {isTtApi && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleSyncTikTok}
-                disabled={isSyncing}
-                className="text-xs"
-              >
-                <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                {isSyncing ? 'Menyinkronkan...' : 'Sinkronkan API'}
-              </Button>
+              <span className="inline-flex items-center gap-1.5 text-xs text-[#3fb950] font-medium bg-[#3fb950]/10 border border-[#3fb950]/30 px-2.5 py-1 rounded-full">
+                <span className="h-2 w-2 rounded-full bg-[#3fb950] animate-pulse"></span>
+                Auto-Sync Aktif
+              </span>
             )}
             <Button
               variant="ghost"
               size="sm"
-              onClick={loadAccounts}
+              onClick={() => loadAccounts(true)}
               disabled={loading}
               className="text-xs text-[#8b949e] hover:text-[#e6edf3]"
             >
@@ -352,28 +338,19 @@ export default function AccountsPage() {
                         </span>
                       </div>
                       <p className="text-xs text-[#8b949e] mt-0.5">
-                        Metrik followers, following, & postingan otomatis diperbarui langsung dari TikTok Developer API.
+                        Metrik followers, following, & postingan otomatis tersinkron real-time dari TikTok Developer API.
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={handleSyncTikTok}
-                      disabled={isSyncing}
-                      className="bg-[#21262d] border border-[#30363d] hover:border-[#58a6ff] text-[#e6edf3] text-xs"
-                    >
-                      <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                      {isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Sekarang'}
-                    </Button>
                     <a
                       href={`https://tiktok.com/@${ttAccount.username.replace('@', '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-[#30363d] bg-[#161b22] px-3 py-1.5 text-xs font-semibold text-[#e6edf3] hover:border-[#58a6ff]"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-[#30363d] bg-[#161b22] px-3.5 py-1.5 text-xs font-semibold text-[#e6edf3] hover:border-[#58a6ff]"
                     >
-                      <ExternalLink className="h-3 w-3" />
-                      Profil
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Buka Profil
                     </a>
                   </div>
                 </div>
@@ -458,7 +435,7 @@ export default function AccountsPage() {
                             {isApi ? (
                               <Badge variant="success" className="text-[10px] px-1.5 py-0">
                                 <CheckCircle2 className="mr-1 h-2.5 w-2.5" />
-                                API Resmi Terhubung
+                                API Terhubung
                               </Badge>
                             ) : (
                               <Badge variant="warning" className="text-[10px] px-1.5 py-0 bg-[#f0883e]/15 text-[#f0883e] border-[#f0883e]/30">
@@ -648,22 +625,15 @@ export default function AccountsPage() {
               Client Key sudah terkonfigurasi di sistem SocialHub
             </p>
             {isTtApi ? (
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center gap-1.5">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-[#3fb950]/30 bg-[#3fb950]/15 px-3 py-1.5 text-xs font-semibold text-[#3fb950]">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Akun Sudah Terhubung Resmi ({ttAccount?.username})
                 </span>
-                <span className="text-[11px] text-[#8b949e]">Status API & Auto-Sync Aktif</span>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={handleSyncTikTok}
-                  disabled={isSyncing}
-                  className="text-xs mt-1"
-                >
-                  <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                  {isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Data API'}
-                </Button>
+                <span className="text-[11px] text-[#3fb950] font-medium flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#3fb950] animate-pulse"></span>
+                  Auto-Sync Otomatis Aktif
+                </span>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2">
@@ -850,7 +820,7 @@ export default function AccountsPage() {
                   disabled={submitting}
                   className="bg-[#238636] hover:bg-[#2ea043] text-white text-xs"
                 >
-                  {submitting ? 'Menyimpan...' : 'Simpan & Sinkronkan'}
+                  {submitting ? 'Menyimpan...' : 'Simpan Akun'}
                 </Button>
               </div>
             </form>

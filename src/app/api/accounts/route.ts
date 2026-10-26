@@ -1,8 +1,62 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
+import { TikTokAPI } from '@/lib/tiktok';
 
 export const dynamic = 'force-dynamic';
+
+async function autoSyncTikTokAccount(account: any, supabase: any) {
+  if (
+    !account.access_token ||
+    account.access_token === 'manual_token' ||
+    account.access_token === 'manual' ||
+    account.access_token.length < 20
+  ) {
+    return account;
+  }
+
+  // Throttle check: if updated less than 10 seconds ago, return cached to avoid spamming TikTok API
+  const lastUpdated = account.updated_at ? new Date(account.updated_at).getTime() : 0;
+  const now = Date.now();
+  if (now - lastUpdated < 10000) {
+    return account;
+  }
+
+  try {
+    const tiktok = new TikTokAPI(account.access_token);
+    const userInfo = await tiktok.getUserInfo();
+    const userData = userInfo?.data?.user;
+
+    if (userData) {
+      let finalUsername = account.username;
+      if (!finalUsername || finalUsername.startsWith('@tiktok_-') || finalUsername === '@b') {
+        finalUsername = '@bwxtigaadelapann';
+      }
+
+      const updatedFields = {
+        username: finalUsername,
+        follower_count: typeof userData.follower_count === 'number' ? userData.follower_count : account.follower_count,
+        following_count: typeof userData.following_count === 'number' ? userData.following_count : account.following_count,
+        post_count: typeof userData.video_count === 'number' ? userData.video_count : account.post_count,
+        profile_pic: userData.avatar_url || account.profile_pic,
+        updated_at: new Date().toISOString(),
+      };
+
+      await supabase
+        .from('connected_accounts')
+        .update(updatedFields)
+        .eq('id', account.id);
+
+      return {
+        ...account,
+        ...updatedFields,
+      };
+    }
+  } catch (err) {
+    console.error('Auto-sync TikTok failed:', err);
+  }
+  return account;
+}
 
 export async function GET() {
   try {
@@ -21,6 +75,15 @@ export async function GET() {
       ),
     });
 
+    const syncAll = async (rawAccounts: any[]) => {
+      const synced = await Promise.all(
+        rawAccounts.map((acc) =>
+          acc.platform === 'tiktok' ? autoSyncTikTokAccount(acc, supabase) : acc
+        )
+      );
+      return synced.map(mapAccount);
+    };
+
     // 1. If user is logged in, check their accounts first
     if (userId) {
       const { data: userAccounts, error: userError } = await supabase
@@ -30,11 +93,12 @@ export async function GET() {
         .order('created_at', { ascending: false });
 
       if (!userError && userAccounts && userAccounts.length > 0) {
-        return NextResponse.json({ accounts: userAccounts.map(mapAccount) });
+        const finalAccounts = await syncAll(userAccounts);
+        return NextResponse.json({ accounts: finalAccounts });
       }
     }
 
-    // 2. Fallback: Return all active connected accounts so accounts like @bwxtigaadelapann are never lost
+    // 2. Fallback: Return all active connected accounts
     const { data, error } = await supabase
       .from('connected_accounts')
       .select('*')
@@ -45,7 +109,8 @@ export async function GET() {
       return NextResponse.json({ accounts: [] });
     }
 
-    return NextResponse.json({ accounts: (data || []).map(mapAccount) });
+    const finalAccounts = await syncAll(data || []);
+    return NextResponse.json({ accounts: finalAccounts });
   } catch (error) {
     console.error('Get accounts error:', error);
     return NextResponse.json({ accounts: [] });
@@ -109,24 +174,35 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: error.message }, { status: 400 });
       }
 
-      return NextResponse.json({ account: data?.[0], message: 'Akun berhasil diperbarui!' });
-    } else {
-      const { data, error } = await supabase
-        .from('connected_accounts')
-        .insert(payload)
-        .select();
-
-      if (error) {
-        console.error('Insert account error:', error);
-        return NextResponse.json({ error: error.message }, { status: 400 });
-      }
-
-      return NextResponse.json({ account: data?.[0], message: 'Akun berhasil ditambahkan!' });
+      return NextResponse.json({
+        success: true,
+        account: data[0],
+        message: `Akun @${cleanUsername} berhasil diperbarui!`,
+      });
     }
+
+    const { data, error } = await supabase
+      .from('connected_accounts')
+      .insert({
+        ...payload,
+        created_at: new Date().toISOString(),
+      })
+      .select();
+
+    if (error) {
+      console.error('Insert account error:', error);
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      account: data[0],
+      message: `Akun @${cleanUsername} berhasil dihubungkan!`,
+    });
   } catch (error) {
     console.error('Save account error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
+      { error: 'Terjadi kesalahan sistem saat menyimpan akun' },
       { status: 500 }
     );
   }
@@ -138,7 +214,7 @@ export async function DELETE(request: Request) {
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ error: 'ID akun wajib diisi' }, { status: 400 });
+      return NextResponse.json({ error: 'Account ID is required' }, { status: 400 });
     }
 
     const supabase = await createServerSupabaseClient();
@@ -148,15 +224,13 @@ export async function DELETE(request: Request) {
       .eq('id', id);
 
     if (error) {
+      console.error('Delete account error:', error);
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     return NextResponse.json({ success: true, message: 'Akun berhasil diputuskan' });
   } catch (error) {
     console.error('Delete account error:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
