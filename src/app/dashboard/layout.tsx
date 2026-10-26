@@ -13,14 +13,29 @@ import {
   Bell,
   LogOut,
   ChevronLeft,
+  Sparkles,
+  Hash,
+  Link2,
+  Flame,
 } from 'lucide-react';
 import { useSidebarStore, useAuthStore } from '@/lib/store';
 import toast from 'react-hot-toast';
 
-const navItems = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: any;
+  badge?: string;
+}
+
+const navItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: BarChart3 },
   { href: '/dashboard/post', label: 'Buat Post', icon: PenSquare },
   { href: '/dashboard/scheduler', label: 'Scheduler', icon: Calendar },
+  { href: '/dashboard/ai-studio', label: 'AI Hook & Script', icon: Sparkles, badge: 'AI' },
+  { href: '/dashboard/hashtags', label: 'Hashtag & Tren', icon: Hash },
+  { href: '/dashboard/bio-link', label: 'Smart Bio Link', icon: Link2, badge: 'Baru' },
+  { href: '/dashboard/trends', label: 'Rate Card & Ide', icon: Flame },
   { href: '/dashboard/accounts', label: 'Akun Sosmed', icon: Users },
 ];
 
@@ -28,6 +43,10 @@ const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/dashboard/post': 'Buat Post',
   '/dashboard/scheduler': 'Scheduler',
+  '/dashboard/ai-studio': 'AI Hook & Script Studio',
+  '/dashboard/hashtags': 'Hashtag & Tren Explorer',
+  '/dashboard/bio-link': 'Smart Link-in-Bio Builder',
+  '/dashboard/trends': 'Inspirasi & Rate Card Simulator',
   '/dashboard/accounts': 'Akun Sosmed',
 };
 
@@ -83,12 +102,12 @@ export default function DashboardLayout({
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
+      logout();
+      toast.success('Berhasil logout');
+      router.push('/login');
     } catch {
-      // Ignore
+      toast.error('Gagal logout');
     }
-    logout();
-    toast.success('Logout berhasil!');
-    router.push('/login');
   };
 
   const pageTitle = pageTitles[pathname] || 'Dashboard';
@@ -98,35 +117,32 @@ export default function DashboardLayout({
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-[#30363d] bg-[#161b22] transition-all duration-300 lg:relative lg:z-auto
-          ${collapsed ? 'lg:w-[72px]' : 'lg:w-[260px]'}
-          ${mobileOpen ? 'w-[260px] translate-x-0' : 'w-[260px] -translate-x-full lg:translate-x-0'}
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-[#30363d] bg-[#161b22] transition-all duration-300 ease-in-out lg:static
+          ${collapsed ? 'lg:w-[72px]' : 'lg:w-64'}
+          ${mobileOpen ? 'w-64 translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-[#30363d] px-4">
-          <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden">
-            <div className="flex h-9 w-9 min-w-[36px] items-center justify-center rounded-lg bg-[#58a6ff]/10 text-lg">
-              📱
+          <Link href="/dashboard" className="flex items-center gap-2.5 overflow-hidden">
+            <div className="flex h-9 w-9 min-w-[36px] items-center justify-center rounded-xl bg-gradient-to-tr from-[#58a6ff] to-[#bc8cff] text-white font-bold text-base shadow-lg shadow-[#58a6ff]/20">
+              S
             </div>
             {!collapsed && (
-              <span className="text-lg font-bold text-[#e6edf3] whitespace-nowrap">
-                SocialHub
+              <span className="text-base font-bold text-[#e6edf3] tracking-tight">
+                Social<span className="text-[#58a6ff]">Hub</span>
               </span>
             )}
           </Link>
           <button
-            onClick={() => {
-              toggle();
-              setMobileOpen(false);
-            }}
+            onClick={toggle}
             className="hidden rounded-lg p-1.5 text-[#8b949e] hover:bg-[#21262d] hover:text-[#e6edf3] lg:block"
           >
             <ChevronLeft
@@ -161,7 +177,16 @@ export default function DashboardLayout({
                 title={collapsed ? item.label : undefined}
               >
                 <item.icon className="h-5 w-5 min-w-[20px]" />
-                {!collapsed && <span className="whitespace-nowrap">{item.label}</span>}
+                {!collapsed && (
+                  <div className="flex items-center justify-between flex-1 truncate">
+                    <span className="whitespace-nowrap truncate">{item.label}</span>
+                    {item.badge && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#bc8cff]/20 text-[#bc8cff] border border-[#bc8cff]/30 leading-none">
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
+                )}
               </Link>
             );
           })}
@@ -267,11 +292,11 @@ export default function DashboardLayout({
                           ✓
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-[#e6edf3]">TikTok Terhubung Sukses</p>
+                          <p className="text-xs font-semibold text-[#e6edf3]">TikTok Terhubung & Auto-Sync</p>
                           <p className="text-[11px] text-[#8b949e] mt-0.5">
-                            Akun TikTok <strong className="text-[#e6edf3]">@bwxtigaadelapann</strong> (1.233 followers) siap untuk upload dan scheduling.
+                            Akun TikTok <strong className="text-[#e6edf3]">@bwxtigaadelapann</strong> tersinkron otomatis secara real-time.
                           </p>
-                          <span className="text-[10px] text-[#8b949e]/70 mt-1 block">Baru saja</span>
+                          <span className="text-[10px] text-[#8b949e]/70 mt-1 block">Real-time</span>
                         </div>
                       </div>
 
@@ -280,11 +305,11 @@ export default function DashboardLayout({
                           IG
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-[#e6edf3]">Instagram Terhubung</p>
+                          <p className="text-xs font-semibold text-[#e6edf3]">Instagram Terdaftar</p>
                           <p className="text-[11px] text-[#8b949e] mt-0.5">
-                            Akun Instagram <strong className="text-[#e6edf3]">@bw283_</strong> (448 followers) aktif di database.
+                            Akun Instagram <strong className="text-[#e6edf3]">@bw283_</strong> aktif di database.
                           </p>
-                          <span className="text-[10px] text-[#8b949e]/70 mt-1 block">1 jam lalu</span>
+                          <span className="text-[10px] text-[#8b949e]/70 mt-1 block">Aktif</span>
                         </div>
                       </div>
 

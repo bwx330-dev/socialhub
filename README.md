@@ -30,6 +30,18 @@
 - 📅 **Smart Post Scheduler & Calendar**  
   Schedule posts ahead of time with prime-time indicators (18:00 – 21:00 WIB), drag-and-drop calendar overview, and automated queue execution.
 
+- 💡 **AI Hook & Caption Studio**  
+  Generate high-retention viral 3-second hooks, structured TikTok video scripts (Hook, Retain, Payoff, CTA), and engaging Instagram captions with 1-click transfer to post composer.
+
+- 🏷️ **Hashtag & Tren Explorer**  
+  Smart 3-Tier hashtag balancing (High, Medium, Niche volume), shadowban keyword scanner, pre-curated Indonesian niche library, and custom saved hashtag sets.
+
+- 🔗 **Smart Link-in-Bio Builder**  
+  Create personalized Linktree-style bio link pages with live interactive smartphone mockup, customizable themes (Obsidian, Neon, Sunset, Emerald), and public shareable URLs.
+
+- 💰 **Inspirasi Konten & Rate Card Simulator**  
+  Live sponsorship & endorsement pricing calculator based on real TikTok follower & engagement metrics, 30-day content ideation matrix, and 2026 FYP algorithm breakdown.
+
 - 🔗 **Official Multi-Platform API Integration**  
   - **TikTok Developer API**: Official OAuth 2.0 Login Kit & Content Posting API integration.
   - **Instagram Graph API**: Direct Meta Developer platform support with quick-connect capability.

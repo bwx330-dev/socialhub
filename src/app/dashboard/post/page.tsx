@@ -46,6 +46,24 @@ export default function CreatePostPage() {
         if (data.accounts) setConnectedAccounts(data.accounts);
       })
       .catch(() => {});
+
+    // Check if coming from AI Hook Studio or Hashtag Explorer
+    const sharedCaption = sessionStorage.getItem('socialhub_draft_caption');
+    if (sharedCaption) {
+      setCaption(sharedCaption);
+      sessionStorage.removeItem('socialhub_draft_caption');
+      toast.success('Draf konten berhasil dimuat ke editor!', { icon: '✨' });
+    }
+    const sharedTags = sessionStorage.getItem('socialhub_draft_tags');
+    if (sharedTags) {
+      try {
+        const parsed = JSON.parse(sharedTags);
+        if (Array.isArray(parsed)) {
+          setHashtags(parsed.map((t) => t.replace(/^#/, '')));
+        }
+      } catch {}
+      sessionStorage.removeItem('socialhub_draft_tags');
+    }
   }, []);
 
   const igAccount = connectedAccounts.find((a) => a.platform === 'instagram');
