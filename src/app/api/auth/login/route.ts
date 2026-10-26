@@ -55,13 +55,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Set secure session cookies
+    // Set secure persistent session cookies (30 days)
     const cookieStore = await cookies();
     cookieStore.set('session_token', data.session.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 60 * 60 * 24 * 30, // 30 days
       path: '/',
     });
 
@@ -69,7 +69,15 @@ export async function POST(request: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      path: '/',
+    });
+
+    cookieStore.set('socialhub_logged_in', 'true', {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
       path: '/',
     });
 

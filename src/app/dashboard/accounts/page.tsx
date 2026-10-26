@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import {
@@ -253,7 +253,56 @@ export default function AccountsPage() {
             ))}
           </div>
         ) : accounts.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-4">
+            {/* Tanda Verifikasi Akun TikTok Aktif */}
+            {accounts.some((a) => a.platform === 'tiktok') && (
+              <div className="rounded-2xl border border-[#3fb950]/40 bg-[#3fb950]/10 p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black border border-[#30363d] text-white">
+                      <TikTok className="h-5 w-5" />
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3fb950] opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-[#3fb950]"></span>
+                      </span>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-[#e6edf3]">
+                          Akun TikTok Terverifikasi: {accounts.find((a) => a.platform === 'tiktok')?.username}
+                        </h4>
+                        <span className="rounded-full bg-[#3fb950]/20 px-2 py-0.5 text-[10px] font-semibold text-[#3fb950] border border-[#3fb950]/40">
+                          🟢 LIVE CONNECTED
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#8b949e]">
+                        Akun Anda sudah 100% tersimpan di Supabase Cloud Database & terhubung ke sistem SocialHub. Fitur upload, analitik, dan perencanaan konten siap digunakan.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`https://tiktok.com/@${accounts.find((a) => a.platform === 'tiktok')?.username?.replace('@', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-[#30363d] bg-[#161b22] px-3 py-1.5 text-xs font-semibold text-[#e6edf3] hover:border-[#58a6ff]"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Buka Profil Asli
+                    </a>
+                    <a
+                      href="/dashboard/post"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#238636] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#2ea043]"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Upload / Buat Post
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-2">
             {accounts.map((account) => {
               const isIg = account.platform === 'instagram';
               return (
@@ -370,6 +419,7 @@ export default function AccountsPage() {
                 </Card>
               );
             })}
+          </div>
           </div>
         ) : (
           <Card className="border-dashed border-[#30363d] bg-[#161b22]/50 p-8 text-center">

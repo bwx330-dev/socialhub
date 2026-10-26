@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -137,8 +137,8 @@ export default function CreatePostPage() {
 
       toast.success(
         isScheduled
-          ? 'Tersimpan di Kalender Konten! 📅'
-          : 'Disimpan sebagai Draft Rencana! 📝'
+          ? 'Tersimpan di Kalender Konten! ðŸ“…'
+          : 'Disimpan sebagai Draft Rencana! ðŸ“'
       );
       setCaption('');
       setHashtags([]);
@@ -203,10 +203,24 @@ export default function CreatePostPage() {
                     : 'border-[#30363d] text-[#8b949e] hover:border-[#e6edf3]/30'
                 }`}
             >
-              <span className="text-base">🎵</span>
+              <span className="text-base">ðŸŽµ</span>
               TikTok
             </button>
           </div>
+
+          {platforms.includes('tiktok') && (
+            <div className="mt-3 flex items-center justify-between rounded-xl border border-[#30363d] bg-[#161b22] px-3.5 py-2 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#3fb950] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#3fb950]"></span>
+                </span>
+                <span className="text-[#8b949e]">Target Akun TikTok:</span>
+                <strong className="text-[#e6edf3]">{ttUsername}</strong>
+              </div>
+              <span className="text-[11px] text-[#3fb950] font-medium">✓ Terhubung & Siap Upload</span>
+            </div>
+          )}
         </Card>
 
         {/* Media Upload */}
@@ -312,7 +326,7 @@ export default function CreatePostPage() {
         {/* Schedule Date & Time Picker */}
         {showSchedulePicker && (
           <Card className="border-[#58a6ff]/40 bg-[#161b22]/90">
-            <h3 className="mb-2 text-sm font-semibold text-[#58a6ff]">📅 Tentukan Waktu Jadwal Konten</h3>
+            <h3 className="mb-2 text-sm font-semibold text-[#58a6ff]">ðŸ“… Tentukan Waktu Jadwal Konten</h3>
             <input
               type="datetime-local"
               value={scheduleAt}
@@ -381,7 +395,7 @@ export default function CreatePostPage() {
                 onClick={() => openAndPost('https://www.tiktok.com/upload', 'TikTok')}
                 className="flex items-center justify-center gap-1.5 rounded-xl border border-[#30363d] bg-[#21262d] py-2 text-xs font-medium text-[#e6edf3] hover:border-[#e6edf3]"
               >
-                <span className="text-xs">🎵</span>
+                <span className="text-xs">ðŸŽµ</span>
                 Copy & Buka TikTok
                 <ExternalLink className="h-3 w-3 text-[#8b949e]" />
               </button>
@@ -462,7 +476,7 @@ export default function CreatePostPage() {
           <Card>
             <h3 className="mb-4 text-sm font-semibold text-[#e6edf3]">
               <span className="inline-flex items-center gap-2">
-                <span className="text-base">🎵</span>
+                <span className="text-base">ðŸŽµ</span>
                 TikTok Preview
               </span>
             </h3>

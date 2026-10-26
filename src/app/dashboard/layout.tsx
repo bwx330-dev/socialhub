@@ -59,12 +59,24 @@ export default function DashboardLayout({
   }, [loadUser]);
 
   useEffect(() => {
-    // Check auth after load
+    // Check persistent auth
     const stored = localStorage.getItem('socialhub_user');
     if (!stored) {
-      router.push('/login');
+      fetch('/api/auth/me')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.loggedIn && data.user) {
+            localStorage.setItem('socialhub_user', JSON.stringify(data.user));
+            loadUser();
+          } else {
+            router.push('/login');
+          }
+        })
+        .catch(() => {
+          router.push('/login');
+        });
     }
-  }, [router]);
+  }, [router, loadUser]);
 
   const handleLogout = async () => {
     try {

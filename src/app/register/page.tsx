@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { UserPlus, Mail, Lock, User } from 'lucide-react';
@@ -18,6 +18,32 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Auto-redirect if already logged in on this device
+  useEffect(() => {
+    const stored = localStorage.getItem('socialhub_user');
+    if (stored) {
+      try {
+        const u = JSON.parse(stored);
+        if (u && u.email) {
+          router.replace('/dashboard');
+          return;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.loggedIn && data.user) {
+          login(data.user);
+          router.replace('/dashboard');
+        }
+      })
+      .catch(() => {});
+  }, [router, login]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,16 +77,13 @@ export default function RegisterPage() {
         return;
       }
 
-      if (data.hasSession) {
-        login({ name: data.user.name, email: data.user.email });
-        toast.success('Registrasi berhasil! Masuk ke dashboard...');
-        router.push('/dashboard');
-      } else {
-        toast.success('Akun berhasil didaftarkan ke Supabase! Silakan login sekarang.', {
-          duration: 6000,
-        });
-        router.push('/login');
-      }
+      login({
+        name: data.user.name,
+        email: data.user.email,
+      });
+
+      toast.success('Registrasi berhasil! Selamat datang.');
+      router.push('/dashboard');
     } catch {
       toast.error('Terjadi kesalahan koneksi');
     } finally {
@@ -72,8 +95,8 @@ export default function RegisterPage() {
     <div className="relative flex min-h-screen items-center justify-center px-4">
       {/* Background effects */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-1/4 right-1/4 h-[400px] w-[400px] rounded-full bg-[#3fb950]/5 blur-[100px]" />
-        <div className="absolute bottom-1/4 left-1/4 h-[300px] w-[300px] rounded-full bg-[#58a6ff]/5 blur-[100px]" />
+        <div className="absolute top-1/3 left-1/4 h-[400px] w-[400px] rounded-full bg-[#58a6ff]/5 blur-[100px]" />
+        <div className="absolute bottom-1/3 right-1/4 h-[300px] w-[300px] rounded-full bg-[#bc8cff]/5 blur-[100px]" />
       </div>
 
       <div className="relative z-10 w-full max-w-md">
@@ -90,7 +113,7 @@ export default function RegisterPage() {
         <Card className="p-8">
           <div className="mb-6 text-center">
             <h1 className="text-2xl font-bold text-[#e6edf3]">Buat Akun</h1>
-            <p className="mt-1 text-sm text-[#8b949e]">Daftar untuk mulai mengelola sosmed kamu</p>
+            <p className="mt-1 text-sm text-[#8b949e]">Mulai kelola sosial media gratis</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -98,7 +121,7 @@ export default function RegisterPage() {
               <Input
                 label="Nama Lengkap"
                 type="text"
-                placeholder="John Doe"
+                placeholder="Nama kamu"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -138,24 +161,32 @@ export default function RegisterPage() {
               <Lock className="pointer-events-none absolute right-3 top-[38px] h-4 w-4 text-[#8b949e]" />
             </div>
 
-            <Button type="submit" className="w-full" size="lg" disabled={loading}>
+            <Button
+              type="submit"
+              className="w-full mt-2"
+              size="lg"
+              disabled={loading}
+            >
               {loading ? (
-                <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                'Mendaftarkan...'
               ) : (
                 <>
                   <UserPlus className="h-4 w-4" />
-                  Daftar
+                  Daftar Sekarang
                 </>
               )}
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-[#8b949e]">
+          <div className="mt-6 text-center text-sm text-[#8b949e]">
             Sudah punya akun?{' '}
-            <Link href="/login" className="font-medium text-[#58a6ff] hover:underline">
+            <Link
+              href="/login"
+              className="font-medium text-[#58a6ff] hover:underline"
+            >
               Login di sini
             </Link>
-          </p>
+          </div>
         </Card>
       </div>
     </div>

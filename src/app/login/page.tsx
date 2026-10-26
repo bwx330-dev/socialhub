@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LogIn, Mail, Lock } from 'lucide-react';
@@ -16,6 +16,32 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Auto-redirect if already logged in on this device
+  useEffect(() => {
+    const stored = localStorage.getItem('socialhub_user');
+    if (stored) {
+      try {
+        const u = JSON.parse(stored);
+        if (u && u.email) {
+          router.replace('/dashboard');
+          return;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.loggedIn && data.user) {
+          login(data.user);
+          router.replace('/dashboard');
+        }
+      })
+      .catch(() => {});
+  }, [router, login]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,24 +126,32 @@ export default function LoginPage() {
               <Lock className="pointer-events-none absolute right-3 top-[38px] h-4 w-4 text-[#8b949e]" />
             </div>
 
-            <Button type="submit" className="w-full" size="lg" disabled={loading}>
+            <Button
+              type="submit"
+              className="w-full"
+              size="lg"
+              disabled={loading}
+            >
               {loading ? (
-                <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                'Memproses...'
               ) : (
                 <>
                   <LogIn className="h-4 w-4" />
-                  Login
+                  Masuk
                 </>
               )}
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-[#8b949e]">
+          <div className="mt-6 text-center text-sm text-[#8b949e]">
             Belum punya akun?{' '}
-            <Link href="/register" className="font-medium text-[#58a6ff] hover:underline">
-              Daftar di sini
+            <Link
+              href="/register"
+              className="font-medium text-[#58a6ff] hover:underline"
+            >
+              Daftar sekarang
             </Link>
-          </p>
+          </div>
         </Card>
       </div>
     </div>

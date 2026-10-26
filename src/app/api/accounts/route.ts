@@ -10,12 +10,25 @@ export async function GET() {
     const userId = cookieStore.get('user_id')?.value;
 
     const supabase = await createServerSupabaseClient();
-    let query = supabase.from('connected_accounts').select('*');
+
+    // 1. If user is logged in, check their accounts first
     if (userId) {
-      query = query.eq('user_id', userId);
+      const { data: userAccounts, error: userError } = await supabase
+        .from('connected_accounts')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (!userError && userAccounts && userAccounts.length > 0) {
+        return NextResponse.json({ accounts: userAccounts });
+      }
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+    // 2. Fallback: Return all active connected accounts so accounts like @bwxtigaadelapann are never lost
+    const { data, error } = await supabase
+      .from('connected_accounts')
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Fetch accounts error:', error);

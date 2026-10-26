@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   BarChart3,
@@ -10,6 +12,7 @@ import {
   Sparkles,
   Zap,
   Shield,
+  LayoutDashboard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -48,6 +51,44 @@ const stats = [
 ];
 
 export default function LandingPage() {
+  const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string } | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    // 1. Check local storage first (instant client check)
+    const stored = localStorage.getItem('socialhub_user');
+    if (stored) {
+      try {
+        const u = JSON.parse(stored);
+        if (u && u.email) {
+          setCurrentUser(u);
+          // Auto-redirect right to dashboard!
+          router.replace('/dashboard');
+          return;
+        }
+      } catch {
+        localStorage.removeItem('socialhub_user');
+      }
+    }
+
+    // 2. Check session cookie via /api/auth/me (server session verification)
+    fetch('/api/auth/me')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.loggedIn && data.user) {
+          localStorage.setItem('socialhub_user', JSON.stringify(data.user));
+          setCurrentUser(data.user);
+          // Auto-redirect right to dashboard!
+          router.replace('/dashboard');
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        setChecking(false);
+      });
+  }, [router]);
+
   return (
     <div className="min-h-screen bg-[#0d1117] relative overflow-hidden">
       {/* Background gradient effects */}
@@ -66,12 +107,28 @@ export default function LandingPage() {
           <span className="text-xl font-bold text-[#e6edf3]">SocialHub</span>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/login">
-            <Button variant="ghost" size="sm">Login</Button>
-          </Link>
-          <Link href="/register">
-            <Button variant="primary" size="sm">Get Started</Button>
-          </Link>
+          {currentUser ? (
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-[#8b949e] hidden sm:inline">
+                Halo, <strong className="text-[#e6edf3]">{currentUser.name}</strong>
+              </span>
+              <Link href="/dashboard">
+                <Button variant="primary" size="sm" className="gap-1.5">
+                  <LayoutDashboard className="h-4 w-4" />
+                  Buka Dashboard
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <>
+              <Link href="/login">
+                <Button variant="ghost" size="sm">Login</Button>
+              </Link>
+              <Link href="/register">
+                <Button variant="primary" size="sm">Get Started</Button>
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
@@ -99,18 +156,29 @@ export default function LandingPage() {
         </p>
 
         <div className="flex flex-col items-center gap-4 sm:flex-row">
-          <Link href="/login">
-            <Button size="lg" className="text-base">
-              Get Started
-              <ArrowRight className="h-5 w-5" />
-            </Button>
-          </Link>
-          <Link href="/login">
-            <Button variant="secondary" size="lg" className="text-base">
-              <Zap className="h-5 w-5 text-[#d29922]" />
-              Live Demo
-            </Button>
-          </Link>
+          {currentUser ? (
+            <Link href="/dashboard">
+              <Button size="lg" className="text-base bg-[#238636] hover:bg-[#2ea043] text-white">
+                Masuk ke Dashboard
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            </Link>
+          ) : (
+            <>
+              <Link href="/login">
+                <Button size="lg" className="text-base">
+                  Get Started
+                  <ArrowRight className="h-5 w-5" />
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button variant="secondary" size="lg" className="text-base">
+                  <Zap className="h-5 w-5 text-[#d29922]" />
+                  Live Demo
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </section>
 
