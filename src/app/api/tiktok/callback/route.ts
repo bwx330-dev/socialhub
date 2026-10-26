@@ -8,12 +8,15 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
+    const url = new URL(request.url);
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || url.host;
+    const proto = request.headers.get('x-forwarded-proto') || (url.protocol.replace(':', '')) || 'https';
+    const appUrl = `${proto}://${host}`;
+
+    const { searchParams } = url;
     const code = searchParams.get('code');
     const error = searchParams.get('error');
     const errorDescription = searchParams.get('error_description');
-
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://socialhub-bxvv0.vercel.app';
 
     // Handle OAuth denial
     if (error) {
@@ -31,7 +34,8 @@ export async function GET(request: Request) {
 
     const clientKey = process.env.TIKTOK_CLIENT_KEY || 'sbawme1rsldz5jtdej';
     const clientSecret = process.env.TIKTOK_CLIENT_SECRET || 'sRo9TFc2nmezvFl8vRFojQXTWj14ZkjM';
-    const redirectUri = process.env.TIKTOK_REDIRECT_URI || `${appUrl}/api/tiktok/callback`;
+    const dynamicRedirectUri = `${appUrl}/api/tiktok/callback`;
+    const redirectUri = process.env.TIKTOK_REDIRECT_URI || dynamicRedirectUri;
 
     if (!clientKey || !clientSecret) {
       return NextResponse.json(
@@ -58,7 +62,7 @@ export async function GET(request: Request) {
     if (tokenData.error || !tokenData.access_token) {
       console.error('TikTok token exchange failed:', tokenData);
       return NextResponse.redirect(
-        `${appUrl}/dashboard/accounts?error=${encodeURIComponent(tokenData.error_description || 'Token exchange failed')}`
+        `${appUrl}/dashboard/accounts?error=${encodeURIComponent(tokenData.error_description || tokenData.error || 'Token exchange failed')}`
       );
     }
 
@@ -69,7 +73,7 @@ export async function GET(request: Request) {
       open_id,
     } = tokenData;
 
-    // Get user profile info
+    // Get user profile info via GET
     const tiktok = new TikTokAPI(access_token);
     const userInfo = await tiktok.getUserInfo();
     const userData = userInfo?.data?.user || {};
@@ -82,11 +86,12 @@ export async function GET(request: Request) {
 
     const accountData = {
       id: generateId(),
+      user_id: userId,
       platform: 'tiktok',
-      platform_user_id: open_id,
+      platform_user_id: open_id || cleanUsername,
       username: `@${cleanUsername}`,
       access_token,
-      refresh_token,
+      refresh_token: refresh_token || null,
       token_expires_at: new Date(Date.now() + (expires_in || 86400) * 1000).toISOString(),
       profile_pic: userData.avatar_url || '',
       follower_count: userData.follower_count || 0,
@@ -94,25 +99,60 @@ export async function GET(request: Request) {
       post_count: userData.video_count || 0,
       is_active: true,
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
-    // Save account into Supabase
+    // Save account into Supabase cleanly
     try {
       const supabase = await createServerSupabaseClient();
-      await supabase.from('connected_accounts').upsert({
-        user_id: userId,
-        platform: 'tiktok',
-        platform_user_id: open_id,
-        username: `@${cleanUsername}`,
-        access_token,
-        refresh_token,
-        profile_pic: userData.avatar_url || null,
-        follower_count: userData.follower_count || 0,
-        following_count: userData.following_count || 0,
-        post_count: userData.video_count || 0,
-        is_active: true,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'platform,platform_user_id' });
+      
+      // Check if TikTok account already exists in database
+      const { data: existingAccounts } = await supabase
+        .from('connected_accounts')
+        .select('id')
+        .eq('platform', 'tiktok');
+
+      if (existingAccounts && existingAccounts.length > 0) {
+        // Update existing record with real OAuth tokens and live metrics
+        await supabase
+          .from('connected_accounts')
+          .update({
+            user_id: userId,
+            platform_user_id: open_id || cleanUsername,
+            username: `@${cleanUsername}`,
+            access_token,
+            refresh_token: refresh_token || null,
+            token_expires_at: accountData.token_expires_at,
+            profile_pic: userData.avatar_url || null,
+            follower_count: userData.follower_count || 0,
+            following_count: userData.following_count || 0,
+            post_count: userData.video_count || 0,
+            is_active: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingAccounts[0].id);
+      } else {
+        // Insert new record
+        await supabase
+          .from('connected_accounts')
+          .insert({
+            id: generateId(),
+            user_id: userId,
+            platform: 'tiktok',
+            platform_user_id: open_id || cleanUsername,
+            username: `@${cleanUsername}`,
+            access_token,
+            refresh_token: refresh_token || null,
+            token_expires_at: accountData.token_expires_at,
+            profile_pic: userData.avatar_url || null,
+            follower_count: userData.follower_count || 0,
+            following_count: userData.following_count || 0,
+            post_count: userData.video_count || 0,
+            is_active: true,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+      }
     } catch (dbErr) {
       console.error('Failed to save to Supabase:', dbErr);
     }
@@ -126,17 +166,17 @@ export async function GET(request: Request) {
       path: '/',
     });
 
-    console.log('TikTok account connected successfully:', cleanUsername);
+    console.log('TikTok account connected successfully via official OAuth API:', cleanUsername);
 
-    // Redirect back to accounts page with success
+    // Redirect back to accounts page with success notification
     return NextResponse.redirect(
-      `${appUrl}/dashboard/accounts?success=tiktok&username=${encodeURIComponent(cleanUsername)}`
+      `${appUrl}/dashboard/accounts?success=tiktok_oauth&username=${encodeURIComponent(cleanUsername)}`
     );
   } catch (error) {
     console.error('TikTok callback error:', error);
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://socialhub-bxvv0.vercel.app';
+    const url = new URL(request.url);
     return NextResponse.redirect(
-      `${appUrl}/dashboard/accounts?error=${encodeURIComponent('TikTok connection failed')}`
+      `${url.origin}/dashboard/accounts?error=${encodeURIComponent('TikTok connection failed')}`
     );
   }
 }

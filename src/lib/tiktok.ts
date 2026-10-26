@@ -15,12 +15,13 @@ export class TikTokAPI {
   }
 
   async getUserInfo() {
-    const res = await fetch(`${TIKTOK_API}/user/info/`, {
-      method: 'POST',
-      headers: this.headers(),
-      body: JSON.stringify({
-        fields: ['open_id', 'union_id', 'avatar_url', 'display_name', 'follower_count', 'following_count', 'likes_count', 'video_count']
-      }),
+    const fields = 'open_id,union_id,avatar_url,display_name,bio_description,is_verified,follower_count,following_count,likes_count,video_count';
+    const res = await fetch(`${TIKTOK_API}/user/info/?fields=${fields}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+      },
+      cache: 'no-store',
     });
     return res.json();
   }

@@ -339,7 +339,7 @@ export default function CreatePostPage() {
           </Card>
         )}
 
-        {/* AKSI KONTEN: 100% GRATIS TANPA MODAL */}
+        {/* AKSI KONTEN */}
         <Card className="border-[#3fb950]/30 bg-[#161b22]">
           <h3 className="mb-2 text-sm font-semibold text-[#e6edf3] flex items-center gap-1.5">
             <Save className="h-4 w-4 text-[#3fb950]" />

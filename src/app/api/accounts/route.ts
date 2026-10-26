@@ -11,6 +11,16 @@ export async function GET() {
 
     const supabase = await createServerSupabaseClient();
 
+    const mapAccount = (acc: any) => ({
+      ...acc,
+      is_api_connected: Boolean(
+        acc.access_token &&
+        acc.access_token !== 'manual_token' &&
+        acc.access_token !== 'manual' &&
+        acc.access_token.length > 20
+      ),
+    });
+
     // 1. If user is logged in, check their accounts first
     if (userId) {
       const { data: userAccounts, error: userError } = await supabase
@@ -20,7 +30,7 @@ export async function GET() {
         .order('created_at', { ascending: false });
 
       if (!userError && userAccounts && userAccounts.length > 0) {
-        return NextResponse.json({ accounts: userAccounts });
+        return NextResponse.json({ accounts: userAccounts.map(mapAccount) });
       }
     }
 
@@ -35,7 +45,7 @@ export async function GET() {
       return NextResponse.json({ accounts: [] });
     }
 
-    return NextResponse.json({ accounts: data || [] });
+    return NextResponse.json({ accounts: (data || []).map(mapAccount) });
   } catch (error) {
     console.error('Get accounts error:', error);
     return NextResponse.json({ accounts: [] });

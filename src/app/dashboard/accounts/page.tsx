@@ -1,19 +1,19 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import {
-  CheckCircle2,
   Users,
-  ExternalLink,
   Plus,
-  ShieldCheck,
-  Sparkles,
   Trash2,
   Edit2,
-  RefreshCw,
-  X,
+  ExternalLink,
+  Sparkles,
+  CheckCircle2,
   FileText,
   UserCheck,
+  RefreshCw,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 import { Instagram, TikTok } from '@/components/ui/icons';
 import { Card } from '@/components/ui/card';
@@ -31,14 +31,29 @@ interface Account {
   post_count: number;
   profile_pic?: string;
   is_active: boolean;
+  access_token?: string;
+  is_api_connected?: boolean;
   created_at: string;
+  updated_at?: string;
 }
+
+export const isApiConnected = (acc?: Account | null): boolean => {
+  if (!acc) return false;
+  if (typeof acc.is_api_connected === 'boolean') return acc.is_api_connected;
+  return Boolean(
+    acc.access_token &&
+    acc.access_token !== 'manual_token' &&
+    acc.access_token !== 'manual' &&
+    acc.access_token.length > 20
+  );
+};
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // Form state
   const [platform, setPlatform] = useState<'instagram' | 'tiktok'>('instagram');
@@ -58,7 +73,7 @@ export default function AccountsPage() {
         setAccounts(data.accounts);
       }
     } catch {
-      toast.error('Gagal mengambil daftar akun');
+      toast.error('Gagal memuat akun tersimpan');
     } finally {
       setLoading(false);
     }
@@ -66,6 +81,26 @@ export default function AccountsPage() {
 
   useEffect(() => {
     loadAccounts();
+
+    // Check query params for OAuth status
+    const urlParams = new URLSearchParams(window.location.search);
+    const successParam = urlParams.get('success');
+    const errorParam = urlParams.get('error');
+    const uName = urlParams.get('username');
+
+    if (successParam === 'tiktok_oauth' || successParam === 'tiktok') {
+      toast.success(
+        `Berhasil terhubung ke TikTok Developer API (@${uName || 'akun'})! Metrik live & auto-update aktif.`,
+        { duration: 6000 }
+      );
+      window.history.replaceState({}, '', window.location.pathname);
+      loadAccounts();
+    } else if (errorParam) {
+      toast.error(`Koneksi API gagal: ${decodeURIComponent(errorParam)}`, {
+        duration: 7000,
+      });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
 
   const handleOpenAddModal = (defaultPlatform?: 'instagram' | 'tiktok') => {
@@ -91,7 +126,7 @@ export default function AccountsPage() {
   const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim()) {
-      toast.error('Username akun wajib diisi!');
+      toast.error('Username wajib diisi');
       return;
     }
 
@@ -111,17 +146,19 @@ export default function AccountsPage() {
       });
 
       const data = await res.json();
-
       if (!res.ok) {
-        if (data.error && data.error.includes('row-level security')) {
-          toast.error('Supabase RLS aktif! Harap jalankan SQL: ALTER TABLE public.connected_accounts DISABLE ROW LEVEL SECURITY;', { duration: 7000 });
+        if (data.needsMigration) {
+          toast.error(
+            'Tabel Supabase belum disiapkan. Jalankan script SQL di Supabase SQL Editor.',
+            { duration: 8000 }
+          );
         } else {
           toast.error(data.error || 'Gagal menyimpan akun');
         }
         return;
       }
 
-      toast.success(data.message || 'Akun berhasil disinkronkan!');
+      toast.success(data.message || 'Akun berhasil disimpan!');
       setIsModalOpen(false);
       loadAccounts();
     } catch {
@@ -145,6 +182,28 @@ export default function AccountsPage() {
       }
     } catch {
       toast.error('Gagal menghubungi server');
+    }
+  };
+
+  const handleSyncTikTok = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch('/api/tiktok/sync', { method: 'POST' });
+      const data = await res.json();
+      if (data.isManual) {
+        toast.error(data.message, { duration: 7000 });
+      } else if (data.success) {
+        toast.success(data.message || 'Metrik TikTok berhasil disinkronkan langsung dari API!', {
+          duration: 5000,
+        });
+        loadAccounts();
+      } else {
+        toast.error(data.error || 'Gagal sinkronisasi dari TikTok API');
+      }
+    } catch {
+      toast.error('Gagal menghubungi server untuk sinkronisasi');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -184,6 +243,11 @@ export default function AccountsPage() {
     }
   };
 
+  const igAccount = accounts.find((a) => a.platform === 'instagram');
+  const ttAccount = accounts.find((a) => a.platform === 'tiktok');
+  const isTtApi = isApiConnected(ttAccount);
+  const isIgApi = isApiConnected(igAccount);
+
   return (
     <div className="space-y-6">
       {/* Banner SocialHub */}
@@ -195,10 +259,9 @@ export default function AccountsPage() {
               <h2 className="text-base font-semibold text-[#e6edf3]">
                 Sinkronisasi Akun Instagram & TikTok Anda
               </h2>
-              <Badge variant="success">Rp 0 Modal</Badge>
             </div>
             <p className="text-xs text-[#8b949e] max-w-2xl leading-relaxed">
-              Hubungkan akun media sosial Anda ke SocialHub. Data username dan followers yang Anda masukkan atau sinkronkan akan langsung tampil di seluruh grafik Dashboard, statistik analytics, dan preview pembuat konten.
+              Hubungkan akun media sosial Anda ke SocialHub. Data username dan followers yang terhubung akan langsung tampil di seluruh grafik Dashboard, statistik analitik, dan preview pembuat konten.
             </p>
           </div>
 
@@ -226,16 +289,29 @@ export default function AccountsPage() {
             </p>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={loadAccounts}
-            disabled={loading}
-            className="text-xs text-[#8b949e] hover:text-[#e6edf3]"
-          >
-            <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            {isTtApi && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleSyncTikTok}
+                disabled={isSyncing}
+                className="text-xs"
+              >
+                <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                {isSyncing ? 'Menyinkronkan...' : 'Sinkronkan API'}
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={loadAccounts}
+              disabled={loading}
+              className="text-xs text-[#8b949e] hover:text-[#e6edf3]"
+            >
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {loading ? (
@@ -254,8 +330,8 @@ export default function AccountsPage() {
           </div>
         ) : accounts.length > 0 ? (
           <div className="space-y-4">
-            {/* Tanda Verifikasi Akun TikTok Aktif */}
-            {accounts.some((a) => a.platform === 'tiktok') && (
+            {/* Tanda Verifikasi Akun TikTok API Resmi Aktif */}
+            {ttAccount && isTtApi ? (
               <div className="rounded-2xl border border-[#3fb950]/40 bg-[#3fb950]/10 p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -269,155 +345,212 @@ export default function AccountsPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h4 className="text-sm font-bold text-[#e6edf3]">
-                          Akun TikTok Terverifikasi: {accounts.find((a) => a.platform === 'tiktok')?.username}
+                          Akun TikTok Terintegrasi API: {ttAccount.username}
                         </h4>
                         <span className="rounded-full bg-[#3fb950]/20 px-2 py-0.5 text-[10px] font-semibold text-[#3fb950] border border-[#3fb950]/40">
-                          🟢 LIVE CONNECTED
+                          🟢 LIVE API CONNECTED
                         </span>
                       </div>
-                      
+                      <p className="text-xs text-[#8b949e] mt-0.5">
+                        Metrik followers, following, & postingan otomatis diperbarui langsung dari TikTok Developer API.
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleSyncTikTok}
+                      disabled={isSyncing}
+                      className="bg-[#21262d] border border-[#30363d] hover:border-[#58a6ff] text-[#e6edf3] text-xs"
+                    >
+                      <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                      {isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Sekarang'}
+                    </Button>
                     <a
-                      href={`https://tiktok.com/@${accounts.find((a) => a.platform === 'tiktok')?.username?.replace('@', '')}`}
+                      href={`https://tiktok.com/@${ttAccount.username.replace('@', '')}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 rounded-xl border border-[#30363d] bg-[#161b22] px-3 py-1.5 text-xs font-semibold text-[#e6edf3] hover:border-[#58a6ff]"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      Buka Profil Asli
-                    </a>
-                    <a
-                      href="/dashboard/post"
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#238636] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#2ea043]"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      Upload / Buat Post
+                      Profil
                     </a>
                   </div>
                 </div>
               </div>
-            )}
-
-            <div className="grid gap-4 sm:grid-cols-2">
-            {accounts.map((account) => {
-              const isIg = account.platform === 'instagram';
-              return (
-                <Card key={account.id} className="relative overflow-hidden border-[#30363d] bg-[#161b22]">
-                  {/* Top accent */}
-                  <div
-                    className={`absolute left-0 right-0 top-0 h-1 ${
-                      isIg
-                        ? 'bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737]'
-                        : 'bg-gradient-to-r from-[#00f2fe] to-[#4facfe]'
-                    }`}
-                  />
-                  <div className="flex items-start gap-4 pt-2">
-                    <div
-                      className={`flex h-12 w-12 items-center justify-center rounded-2xl shrink-0 ${
-                        isIg
-                          ? 'bg-gradient-to-br from-[#833AB4]/20 via-[#E1306C]/20 to-[#F77737]/20 text-[#E1306C]'
-                          : 'bg-[#e6edf3]/10 text-white'
-                      }`}
-                    >
-                      {account.profile_pic ? (
-                        <img
-                          src={account.profile_pic}
-                          alt={account.username}
-                          className="h-12 w-12 rounded-2xl object-cover"
-                        />
-                      ) : isIg ? (
-                        <Instagram className="h-6 w-6" />
-                      ) : (
-                        <TikTok className="h-6 w-6" />
-                      )}
+            ) : ttAccount && !isTtApi ? (
+              <div className="rounded-2xl border border-[#f0883e]/40 bg-[#f0883e]/10 p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black border border-[#f0883e]/40 text-[#f0883e]">
+                      <AlertTriangle className="h-5 w-5" />
                     </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 truncate">
-                          <h3 className="font-semibold capitalize text-[#e6edf3] text-sm">
-                            {account.platform}
-                          </h3>
-                          <Badge variant="success" className="text-[10px] px-1.5 py-0">
-                            <CheckCircle2 className="mr-1 h-2.5 w-2.5" />
-                            Connected
-                          </Badge>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleEditAccount(account)}
-                            className="p-1.5 rounded-lg text-[#8b949e] hover:text-[#58a6ff] hover:bg-[#21262d] transition-colors"
-                            title="Edit Data Akun"
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteAccount(account.id, account.username)}
-                            className="p-1.5 rounded-lg text-[#8b949e] hover:text-[#da3633] hover:bg-[#21262d] transition-colors"
-                            title="Putuskan Akun"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-[#e6edf3]">
+                          Akun {ttAccount.username} Masih Mode Manual
+                        </h4>
+                        <span className="rounded-full bg-[#f0883e]/20 px-2 py-0.5 text-[10px] font-semibold text-[#f0883e] border border-[#f0883e]/40">
+                          ⚠️ Belum Terintegrasi API Resmi
+                        </span>
                       </div>
-
-                      <p className="mt-0.5 text-sm font-medium text-[#58a6ff] truncate">
-                        {account.username}
+                      <p className="text-xs text-[#8b949e] mt-0.5 max-w-xl">
+                        Penambahan following & followers di TikTok tidak update otomatis karena belum terhubung via API resmi TikTok Developer.
                       </p>
-
-                      <div className="mt-3 grid grid-cols-3 gap-2 border-t border-[#21262d] pt-2.5 text-xs">
-                        <div>
-                          <p className="text-[11px] text-[#8b949e]">Followers</p>
-                          <p className="font-semibold text-[#e6edf3]">
-                            {formatThousands(account.follower_count)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[11px] text-[#8b949e]">Following</p>
-                          <p className="font-semibold text-[#e6edf3]">
-                            {formatThousands(account.following_count)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[11px] text-[#8b949e]">Posts</p>
-                          <p className="font-semibold text-[#e6edf3]">
-                            {formatThousands(account.post_count)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex items-center justify-between">
-                        <a
-                          href={
-                            isIg
-                              ? `https://instagram.com/${account.username.replace('@', '')}`
-                              : `https://tiktok.com/@${account.username.replace('@', '')}`
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-[11px] text-[#8b949e] hover:text-[#58a6ff] hover:underline"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          Buka di {isIg ? 'Instagram' : 'TikTok'}
-                        </a>
-
-                        <a
-                          href="/dashboard/post"
-                          className="text-[11px] text-[#3fb950] font-medium hover:underline flex items-center gap-1"
-                        >
-                          <FileText className="h-3 w-3" />
-                          Buat Konten
-                        </a>
-                      </div>
                     </div>
                   </div>
-                </Card>
-              );
-            })}
-          </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleOAuthConnect('tiktok')}
+                      className="bg-[#e6edf3] text-black hover:bg-[#c9d1d9] text-xs font-semibold"
+                    >
+                      <TikTok className="mr-1.5 h-3.5 w-3.5" />
+                      Hubungkan via OAuth TikTok
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {accounts.map((account) => {
+                const isIg = account.platform === 'instagram';
+                const isApi = isApiConnected(account);
+
+                return (
+                  <Card key={account.id} className="relative overflow-hidden border-[#30363d] bg-[#161b22]">
+                    {/* Top accent */}
+                    <div
+                      className={`absolute left-0 right-0 top-0 h-1 ${
+                        isIg
+                          ? 'bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737]'
+                          : 'bg-gradient-to-r from-[#00f2fe] to-[#4facfe]'
+                      }`}
+                    />
+                    <div className="flex items-start gap-4 pt-2">
+                      <div
+                        className={`flex h-12 w-12 items-center justify-center rounded-2xl shrink-0 ${
+                          isIg
+                            ? 'bg-gradient-to-br from-[#833AB4]/20 via-[#E1306C]/20 to-[#F77737]/20 text-[#E1306C]'
+                            : 'bg-[#e6edf3]/10 text-white'
+                        }`}
+                      >
+                        {account.profile_pic ? (
+                          <img
+                            src={account.profile_pic}
+                            alt={account.username}
+                            className="h-12 w-12 rounded-2xl object-cover"
+                          />
+                        ) : isIg ? (
+                          <Instagram className="h-6 w-6" />
+                        ) : (
+                          <TikTok className="h-6 w-6" />
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <h3 className="font-semibold capitalize text-[#e6edf3] text-sm">
+                              {account.platform}
+                            </h3>
+                            {isApi ? (
+                              <Badge variant="success" className="text-[10px] px-1.5 py-0">
+                                <CheckCircle2 className="mr-1 h-2.5 w-2.5" />
+                                API Resmi Terhubung
+                              </Badge>
+                            ) : (
+                              <Badge variant="warning" className="text-[10px] px-1.5 py-0 bg-[#f0883e]/15 text-[#f0883e] border-[#f0883e]/30">
+                                Input Manual
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleEditAccount(account)}
+                              className="p-1.5 rounded-lg text-[#8b949e] hover:text-[#58a6ff] hover:bg-[#21262d] transition-colors"
+                              title="Edit Data Akun"
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAccount(account.id, account.username)}
+                              className="p-1.5 rounded-lg text-[#8b949e] hover:text-[#da3633] hover:bg-[#21262d] transition-colors"
+                              title="Putuskan Akun"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <p className="mt-0.5 text-sm font-medium text-[#58a6ff] truncate">
+                          {account.username}
+                        </p>
+
+                        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-[#21262d] pt-2.5 text-xs">
+                          <div>
+                            <p className="text-[11px] text-[#8b949e]">Followers</p>
+                            <p className="font-semibold text-[#e6edf3]">
+                              {formatThousands(account.follower_count)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] text-[#8b949e]">Following</p>
+                            <p className="font-semibold text-[#e6edf3]">
+                              {formatThousands(account.following_count)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] text-[#8b949e]">Posts</p>
+                            <p className="font-semibold text-[#e6edf3]">
+                              {formatThousands(account.post_count)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {!isApi && (
+                          <div className="mt-2.5 flex items-center justify-between rounded-lg bg-[#21262d]/60 px-2.5 py-1.5 text-[11px]">
+                            <span className="text-[#8b949e]">Mode manual (tidak auto-update)</span>
+                            <button
+                              onClick={() => handleOAuthConnect(account.platform)}
+                              className="font-medium text-[#58a6ff] hover:underline"
+                            >
+                              Hubungkan OAuth →
+                            </button>
+                          </div>
+                        )}
+
+                        <div className="mt-3 flex items-center justify-between">
+                          <a
+                            href={
+                              isIg
+                                ? `https://instagram.com/${account.username.replace('@', '')}`
+                                : `https://tiktok.com/@${account.username.replace('@', '')}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-[11px] text-[#8b949e] hover:text-[#58a6ff] hover:underline"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                            Buka Profil
+                          </a>
+
+                          <a
+                            href="/dashboard/post"
+                            className="text-[11px] text-[#3fb950] font-medium hover:underline flex items-center gap-1"
+                          >
+                            <FileText className="h-3 w-3" />
+                            Buat Konten
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <Card className="border-dashed border-[#30363d] bg-[#161b22]/50 p-8 text-center">
@@ -453,10 +586,10 @@ export default function AccountsPage() {
       {/* Integrasi Developer Resmi (Meta & TikTok) */}
       <div className="pt-2">
         <h2 className="mb-2 text-lg font-semibold text-[#e6edf3]">
-          Metode Alternatif: Integrasi Developer Resmi (OAuth API)
+          Integrasi Developer Resmi (OAuth API)
         </h2>
         <p className="mb-4 text-xs text-[#8b949e]">
-          Jika Anda developer dan ingin auto-sync metrik langsung dari API resmi Meta for Developers atau TikTok for Developers:
+          Hubungkan akun melalui OAuth API resmi Meta atau TikTok Developer agar metrik followers, following, likes, dan postingan bertambah & terupdate otomatis secara real-time:
         </p>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -469,31 +602,38 @@ export default function AccountsPage() {
             <p className="mb-4 text-xs text-[#8b949e] max-w-xs">
               Gunakan Meta App (Instagram Tester) gratis tanpa verifikasi bisnis
             </p>
-            {accounts.some((a) => a.platform === 'instagram') ? (
+            {isIgApi ? (
               <div className="flex flex-col items-center gap-1.5">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-[#3fb950]/30 bg-[#3fb950]/15 px-3 py-1.5 text-xs font-semibold text-[#3fb950]">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  Akun Sudah Terhubung ({accounts.find((a) => a.platform === 'instagram')?.username})
+                  Akun Sudah Terhubung Resmi ({igAccount?.username})
                 </span>
-                <span className="text-[11px] text-[#8b949e]">Status Database & API Siap</span>
+                <span className="text-[11px] text-[#8b949e]">Status Database & API Graph Aktif</span>
               </div>
             ) : (
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => handleOAuthConnect('instagram')}
-                  className="bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] hover:opacity-90 text-xs"
-                >
-                  OAuth Meta
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => handleOpenAddModal('instagram')}
-                  className="text-xs"
-                >
-                  Input Cepat
-                </Button>
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleOAuthConnect('instagram')}
+                    className="bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] hover:opacity-90 text-xs"
+                  >
+                    OAuth Meta
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleOpenAddModal('instagram')}
+                    className="text-xs"
+                  >
+                    Input Cepat
+                  </Button>
+                </div>
+                {igAccount && (
+                  <span className="text-[11px] text-[#8b949e]">
+                    Akun {igAccount.username} saat ini masih mode manual. Klik OAuth Meta untuk auto-update API.
+                  </span>
+                )}
               </div>
             )}
           </Card>
@@ -507,31 +647,48 @@ export default function AccountsPage() {
             <p className="mb-4 text-xs text-[#8b949e] max-w-xs">
               Client Key sudah terkonfigurasi di sistem SocialHub
             </p>
-            {accounts.some((a) => a.platform === 'tiktok') ? (
-              <div className="flex flex-col items-center gap-1.5">
+            {isTtApi ? (
+              <div className="flex flex-col items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-[#3fb950]/30 bg-[#3fb950]/15 px-3 py-1.5 text-xs font-semibold text-[#3fb950]">
                   <CheckCircle2 className="h-3.5 w-3.5" />
-                  Akun Sudah Terhubung ({accounts.find((a) => a.platform === 'tiktok')?.username})
+                  Akun Sudah Terhubung Resmi ({ttAccount?.username})
                 </span>
-                <span className="text-[11px] text-[#8b949e]">Status API & Sandbox Aktif</span>
-              </div>
-            ) : (
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => handleOAuthConnect('tiktok')}
-                  className="bg-[#e6edf3] text-black hover:bg-[#c9d1d9] text-xs"
-                >
-                  OAuth TikTok
-                </Button>
+                <span className="text-[11px] text-[#8b949e]">Status API & Auto-Sync Aktif</span>
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => handleOpenAddModal('tiktok')}
-                  className="text-xs"
+                  onClick={handleSyncTikTok}
+                  disabled={isSyncing}
+                  className="text-xs mt-1"
                 >
-                  Input Cepat
+                  <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  {isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Data API'}
                 </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleOAuthConnect('tiktok')}
+                    className="bg-[#e6edf3] text-black hover:bg-[#c9d1d9] text-xs font-semibold"
+                  >
+                    OAuth TikTok
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleOpenAddModal('tiktok')}
+                    className="text-xs"
+                  >
+                    Input Cepat
+                  </Button>
+                </div>
+                {ttAccount && (
+                  <span className="text-[11px] text-[#8b949e] max-w-xs text-center mt-0.5">
+                    Akun {ttAccount.username} masih mode manual. Klik OAuth TikTok untuk auto-update followers & following dari API Sandbox.
+                  </span>
+                )}
               </div>
             )}
           </Card>

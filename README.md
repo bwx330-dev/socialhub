@@ -3,7 +3,7 @@
 # 🌐 SocialHub
 
 **Unified Social Media Command Center**  
-*Manage, Schedule, Publish & Track TikTok & Instagram from One Single Dashboard — 100% Free (Rp 0 Modal)*
+*Manage, Schedule, Publish & Track TikTok & Instagram from One Single Dashboard*
 
 [![Live Demo](https://img.shields.io/badge/Demo-socialhub--wine.vercel.app-blue?style=for-the-badge&logo=vercel)](https://socialhub-wine.vercel.app)
 [![Next.js](https://img.shields.io/badge/Next.js-16.0-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
