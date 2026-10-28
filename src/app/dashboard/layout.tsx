@@ -17,6 +17,7 @@ import {
   Hash,
   Link2,
   Flame,
+  Music2,
 } from 'lucide-react';
 import { useSidebarStore, useAuthStore } from '@/lib/store';
 import toast from 'react-hot-toast';
@@ -33,6 +34,7 @@ const navItems: NavItem[] = [
   { href: '/dashboard/post', label: 'Buat Post', icon: PenSquare },
   { href: '/dashboard/scheduler', label: 'Scheduler', icon: Calendar },
   { href: '/dashboard/ai-studio', label: 'AI Hook & Script', icon: Sparkles, badge: 'AI' },
+  { href: '/dashboard/sounds-effects', label: 'Sound & Efek Viral', icon: Music2, badge: '⚡ Live' },
   { href: '/dashboard/hashtags', label: 'Hashtag & Tren', icon: Hash },
   { href: '/dashboard/bio-link', label: 'Smart Bio Link', icon: Link2, badge: 'Baru' },
   { href: '/dashboard/trends', label: 'Rate Card & Ide', icon: Flame },
@@ -44,6 +46,7 @@ const pageTitles: Record<string, string> = {
   '/dashboard/post': 'Buat Post',
   '/dashboard/scheduler': 'Scheduler',
   '/dashboard/ai-studio': 'AI Hook & Script Studio',
+  '/dashboard/sounds-effects': 'Tren Sound & Efek Viral (Real-Time)',
   '/dashboard/hashtags': 'Hashtag & Tren Explorer',
   '/dashboard/bio-link': 'Smart Link-in-Bio Builder',
   '/dashboard/trends': 'Inspirasi & Rate Card Simulator',

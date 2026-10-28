@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import {
   Upload,
   X,
@@ -16,6 +17,7 @@ import {
   Check,
   CalendarCheck,
   ExternalLink,
+  Music2,
 } from 'lucide-react';
 import { Instagram, TikTok } from '@/components/ui/icons';
 import { Card } from '@/components/ui/card';
@@ -38,6 +40,7 @@ export default function CreatePostPage() {
   const [showSchedulePicker, setShowSchedulePicker] = useState(false);
   const [copiedCaption, setCopiedCaption] = useState(false);
   const [connectedAccounts, setConnectedAccounts] = useState<Array<{ platform: string; username: string; profile_pic?: string }>>([]);
+  const [selectedSound, setSelectedSound] = useState<{ id: string; title: string; artist: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/accounts')
@@ -63,6 +66,17 @@ export default function CreatePostPage() {
         }
       } catch {}
       sessionStorage.removeItem('socialhub_draft_tags');
+    }
+    const sharedAudio = sessionStorage.getItem('socialhub_draft_audio');
+    if (sharedAudio) {
+      try {
+        const parsed = JSON.parse(sharedAudio);
+        if (parsed && parsed.title) {
+          setSelectedSound(parsed);
+          toast.success(`Sound viral terpasang: "${parsed.title}"`, { icon: '🎵' });
+        }
+      } catch {}
+      sessionStorage.removeItem('socialhub_draft_audio');
     }
   }, []);
 
@@ -341,6 +355,59 @@ export default function CreatePostPage() {
           </div>
         </Card>
 
+        {/* Sound & Audio Viral FYP */}
+        <Card className="border-pink-500/30 bg-[#161b22]">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Music2 className="h-4 w-4 text-pink-400" />
+              Sound & Musik Latar (Algoritma FYP)
+            </h3>
+            <Link
+              href="/dashboard/sounds-effects"
+              className="text-xs text-pink-400 hover:text-pink-300 flex items-center gap-1 font-medium"
+            >
+              ⚡ Buka Radar Tren <ExternalLink className="h-3 w-3" />
+            </Link>
+          </div>
+
+          {selectedSound ? (
+            <div className="flex items-center justify-between rounded-xl border border-pink-500/40 bg-pink-950/20 p-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pink-500/20 text-pink-400">
+                  <Music2 className="h-4 w-4 animate-pulse" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-foreground line-clamp-1">{selectedSound.title}</div>
+                  <div className="text-[11px] text-muted-foreground">{selectedSound.artist}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="success" className="text-[10px]">
+                  ✓ Terpasang
+                </Badge>
+                <button
+                  onClick={() => setSelectedSound(null)}
+                  className="p-1 text-[#8b949e] hover:text-[#da3633] rounded"
+                  title="Hapus sound"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-[#30363d] p-4 text-center">
+              <p className="text-xs text-[#8b949e] mb-2">
+                Belum ada sound trending yang dipilih. Gunakan sound viral untuk melipatgandakan jangkauan video Anda.
+              </p>
+              <Link href="/dashboard/sounds-effects">
+                <Button size="sm" variant="secondary" className="h-7 text-xs border-pink-500/40 text-pink-300 hover:bg-pink-500/10">
+                  <Music2 className="mr-1.5 h-3.5 w-3.5" /> Pilih dari Tren Real-Time
+                </Button>
+              </Link>
+            </div>
+          )}
+        </Card>
+
         {/* Schedule Date & Time Picker */}
         {showSchedulePicker && (
           <Card className="border-[#58a6ff]/40 bg-[#161b22]/90">
@@ -534,10 +601,17 @@ export default function CreatePostPage() {
                   <p className="text-xs text-white/90 line-clamp-3">
                     {fullCaption || 'Caption akan muncul di sini...'}
                   </p>
+                  {/* TikTok Audio Ticker */}
+                  <div className="mt-2 flex items-center gap-1.5 text-[10px] text-white/80">
+                    <Music2 className="h-3 w-3 animate-spin text-pink-400 shrink-0" />
+                    <span className="line-clamp-1 font-medium">
+                      {selectedSound ? `${selectedSound.title} • ${selectedSound.artist}` : `Suara asli - ${ttUsername}`}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Right side actions */}
-                <div className="absolute right-2 bottom-20 flex flex-col items-center gap-5">
+                <div className="absolute right-2 bottom-16 flex flex-col items-center gap-4">
                   <div className="flex flex-col items-center">
                     <Heart className="h-7 w-7 text-white" />
                     <span className="text-[10px] text-white">0</span>
@@ -549,6 +623,11 @@ export default function CreatePostPage() {
                   <div className="flex flex-col items-center">
                     <Bookmark className="h-7 w-7 text-white" />
                     <span className="text-[10px] text-white">0</span>
+                  </div>
+                  <div className="flex flex-col items-center pt-1">
+                    <div className="h-6 w-6 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center animate-spin">
+                      <div className="h-2 w-2 rounded-full bg-pink-500" />
+                    </div>
                   </div>
                 </div>
               </div>

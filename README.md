@@ -30,6 +30,9 @@
 - 📅 **Smart Post Scheduler & Calendar**  
   Schedule posts ahead of time with prime-time indicators (18:00 – 21:00 WIB), drag-and-drop calendar overview, and automated queue execution.
 
+- 🎵 **Tren Sound & Efek Viral (Real-Time Radar)**  
+  Live monitoring of surging viral TikTok sounds and CapCut templates with real-time velocity metrics (`+420% FYP surge`), built-in browser audio player preview, dynamic auto-scan engine, and 1-click post transfer.
+
 - 💡 **AI Hook & Caption Studio**  
   Generate high-retention viral 3-second hooks, structured TikTok video scripts (Hook, Retain, Payoff, CTA), and engaging Instagram captions with 1-click transfer to post composer.
 
