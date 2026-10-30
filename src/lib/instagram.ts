@@ -1,7 +1,7 @@
 // Instagram Graph API helper
 // Docs: https://developers.facebook.com/docs/instagram-api
 
-const IG_API = 'https://graph.instagram.com/v18.0';
+const IG_API = 'https://graph.facebook.com/v18.0';
 const FB_API = 'https://graph.facebook.com/v18.0';
 
 export class InstagramAPI {

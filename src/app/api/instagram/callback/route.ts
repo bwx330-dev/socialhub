@@ -97,18 +97,18 @@ export async function GET(request: Request) {
       console.warn('Failed to fetch detailed IG pages data, fallback to basic:', e);
     }
 
-    // Determine final username: preserve real username (e.g. @bw283_) if available
+    // Determine final username & metrics
     const finalUsername = igProfile.username ? `@${igProfile.username.replace(/^@/, '')}` : (existing?.username || '@bw283_');
-    const followers = typeof igProfile.followers_count === 'number' ? igProfile.followers_count : (existing?.follower_count || 448);
-    const following = typeof igProfile.follows_count === 'number' ? igProfile.follows_count : (existing?.following_count || 258);
-    const posts = typeof igProfile.media_count === 'number' ? igProfile.media_count : (existing?.post_count || 12);
-    const avatar = igProfile.profile_picture_url || existing?.profile_pic || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
+    const followers = typeof igProfile.followers_count === 'number' ? igProfile.followers_count : (typeof existing?.follower_count === 'number' ? existing.follower_count : 494);
+    const following = typeof igProfile.follows_count === 'number' ? igProfile.follows_count : (typeof existing?.following_count === 'number' ? existing.following_count : 444);
+    const posts = typeof igProfile.media_count === 'number' ? igProfile.media_count : (typeof existing?.post_count === 'number' ? existing.post_count : 0);
+    const avatar = igProfile.profile_picture_url || existing?.profile_pic || '/bw283_avatar.jpg';
 
     const accountData = {
       id: existing?.id || generateId(),
       user_id: userId || existing?.user_id || null,
       platform: 'instagram' as const,
-      platform_user_id: igUserId || finalUsername.replace('@', ''),
+      platform_user_id: igUserId || existing?.platform_user_id || finalUsername.replace('@', ''),
       username: finalUsername,
       access_token: access_token,
       profile_pic: avatar,

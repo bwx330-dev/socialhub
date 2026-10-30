@@ -23,26 +23,55 @@ async function autoSyncInstagramAccount(account: any, supabase: any) {
   }
 
   try {
-    const igApi = new InstagramAPI(account.access_token, account.platform_user_id || 'me');
-    const profile = await igApi.getProfile();
-    if (profile && !profile.error) {
-      const updatedFields = {
-        follower_count: typeof profile.followers_count === 'number' ? profile.followers_count : account.follower_count,
-        following_count: typeof profile.follows_count === 'number' ? profile.follows_count : account.following_count,
-        post_count: typeof profile.media_count === 'number' ? profile.media_count : account.post_count,
-        profile_pic: profile.profile_picture_url || account.profile_pic,
-        updated_at: new Date().toISOString(),
-      };
+    let targetIgId = account.platform_user_id;
+    let activeToken = account.access_token;
 
-      await supabase
-        .from('connected_accounts')
-        .update(updatedFields)
-        .eq('id', account.id);
+    // If platform_user_id is not numerical, attempt to resolve through Facebook Pages
+    if (!targetIgId || !/^\d+$/.test(targetIgId)) {
+      const pagesRes = await fetch(
+        `https://graph.facebook.com/v18.0/me/accounts?access_token=${account.access_token}`
+      );
+      const pagesData = await pagesRes.json();
 
-      return {
-        ...account,
-        ...updatedFields,
-      };
+      if (pagesData.data && pagesData.data.length > 0) {
+        for (const page of pagesData.data) {
+          const igRes = await fetch(
+            `https://graph.facebook.com/v18.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`
+          );
+          const igData = await igRes.json();
+          if (igData.instagram_business_account?.id) {
+            targetIgId = igData.instagram_business_account.id;
+            activeToken = page.access_token || account.access_token;
+            break;
+          }
+        }
+      }
+    }
+
+    if (targetIgId && /^\d+$/.test(targetIgId)) {
+      const igApi = new InstagramAPI(activeToken, targetIgId);
+      const profile = await igApi.getProfile();
+      if (profile && !profile.error) {
+        const updatedFields = {
+          platform_user_id: targetIgId,
+          access_token: activeToken,
+          follower_count: typeof profile.followers_count === 'number' ? profile.followers_count : account.follower_count,
+          following_count: typeof profile.follows_count === 'number' ? profile.follows_count : account.following_count,
+          post_count: typeof profile.media_count === 'number' ? profile.media_count : account.post_count,
+          profile_pic: profile.profile_picture_url || account.profile_pic || '/bw283_avatar.jpg',
+          updated_at: new Date().toISOString(),
+        };
+
+        await supabase
+          .from('connected_accounts')
+          .update(updatedFields)
+          .eq('id', account.id);
+
+        return {
+          ...account,
+          ...updatedFields,
+        };
+      }
     }
   } catch (err) {
     console.error('Auto-sync Instagram failed:', err);
@@ -185,7 +214,7 @@ export async function POST(request: Request) {
     // Check if account already exists for this platform
     let existingQuery = supabase
       .from('connected_accounts')
-      .select('id')
+      .select('id, access_token')
       .eq('platform', platform)
       .eq('platform_user_id', cleanUsername);
 
@@ -195,12 +224,11 @@ export async function POST(request: Request) {
 
     const { data: existing } = await existingQuery.limit(1);
 
-    const payload = {
+    const payload: Record<string, any> = {
       user_id: userId,
       platform,
       platform_user_id: cleanUsername,
       username: `@${cleanUsername}`,
-      access_token: 'manual_token',
       follower_count: parseInt(follower_count, 10) || 0,
       following_count: parseInt(following_count, 10) || 0,
       post_count: parseInt(post_count, 10) || 0,
@@ -210,6 +238,13 @@ export async function POST(request: Request) {
     };
 
     if (existing && existing.length > 0) {
+      const currentToken = existing[0].access_token;
+      if (currentToken && currentToken !== 'manual_token' && currentToken.length > 20) {
+        payload.access_token = currentToken;
+      } else {
+        payload.access_token = 'manual_token';
+      }
+
       const { data, error } = await supabase
         .from('connected_accounts')
         .update(payload)
@@ -227,6 +262,8 @@ export async function POST(request: Request) {
         message: `Akun @${cleanUsername} berhasil diperbarui!`,
       });
     }
+
+    payload.access_token = 'manual_token';
 
     const { data, error } = await supabase
       .from('connected_accounts')
