@@ -125,7 +125,7 @@ export function getInstagramAuthUrl(appId: string, redirectUri: string) {
     'pages_read_engagement',
   ].join(',');
 
-  return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code`;
+  return `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopes}&response_type=code&auth_type=rerequest`;
 }
 
 // Exchange code for token

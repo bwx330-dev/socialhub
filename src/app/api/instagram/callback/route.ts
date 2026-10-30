@@ -77,20 +77,29 @@ export async function GET(request: Request) {
         `https://graph.facebook.com/v18.0/me/accounts?access_token=${access_token}`
       );
       const pagesData = await pagesRes.json();
+      console.log('Facebook me/accounts response:', JSON.stringify(pagesData));
 
       if (pagesData.data && pagesData.data.length > 0) {
-        const pageId = pagesData.data[0].id;
-        const pageToken = pagesData.data[0].access_token;
+        for (const page of pagesData.data) {
+          const pageId = page.id;
+          const pageToken = page.access_token;
 
-        const igAccountRes = await fetch(
-          `https://graph.facebook.com/v18.0/${pageId}?fields=instagram_business_account&access_token=${pageToken}`
-        );
-        const igAccountData = await igAccountRes.json();
+          const igAccountRes = await fetch(
+            `https://graph.facebook.com/v18.0/${pageId}?fields=instagram_business_account&access_token=${pageToken}`
+          );
+          const igAccountData = await igAccountRes.json();
+          console.log(`Page ${pageId} IG account data:`, JSON.stringify(igAccountData));
 
-        if (igAccountData.instagram_business_account) {
-          igUserId = igAccountData.instagram_business_account.id;
-          const igApi = new InstagramAPI(access_token, igUserId);
-          igProfile = (await igApi.getProfile()) || {};
+          if (igAccountData.instagram_business_account?.id) {
+            igUserId = igAccountData.instagram_business_account.id;
+            const igApi = new InstagramAPI(pageToken, igUserId);
+            const fetchedProfile = await igApi.getProfile();
+            console.log('Fetched IG profile:', JSON.stringify(fetchedProfile));
+            if (fetchedProfile && !fetchedProfile.error) {
+              igProfile = fetchedProfile;
+              break;
+            }
+          }
         }
       }
     } catch (e) {
