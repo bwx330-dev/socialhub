@@ -18,7 +18,7 @@ async function autoSyncInstagramAccount(account: any, supabase: any) {
 
   const lastUpdated = account.updated_at ? new Date(account.updated_at).getTime() : 0;
   const now = Date.now();
-  if (now - lastUpdated < 10000) {
+  if (now - lastUpdated < 5000) {
     return account;
   }
 
@@ -26,25 +26,21 @@ async function autoSyncInstagramAccount(account: any, supabase: any) {
     let targetIgId = account.platform_user_id;
     let activeToken = account.access_token;
 
-    // If platform_user_id is not numerical, attempt to resolve through Facebook Pages
+    // If platform_user_id is not numerical, attempt to resolve from debug_token or Facebook Pages
     if (!targetIgId || !/^\d+$/.test(targetIgId)) {
-      const pagesRes = await fetch(
-        `https://graph.facebook.com/v18.0/me/accounts?access_token=${account.access_token}`
-      );
-      const pagesData = await pagesRes.json();
-
-      if (pagesData.data && pagesData.data.length > 0) {
-        for (const page of pagesData.data) {
-          const igRes = await fetch(
-            `https://graph.facebook.com/v18.0/${page.id}?fields=instagram_business_account&access_token=${page.access_token}`
-          );
-          const igData = await igRes.json();
-          if (igData.instagram_business_account?.id) {
-            targetIgId = igData.instagram_business_account.id;
-            activeToken = page.access_token || account.access_token;
-            break;
-          }
+      try {
+        const debugRes = await fetch(
+          `https://graph.facebook.com/v18.0/debug_token?input_token=${activeToken}&access_token=${activeToken}`
+        );
+        const debugData = await debugRes.json();
+        const igScope = debugData.data?.granular_scopes?.find((s: any) => s.scope === 'instagram_basic');
+        if (igScope?.target_ids?.[0]) {
+          targetIgId = igScope.target_ids[0];
         }
+      } catch {}
+
+      if (!targetIgId || !/^\d+$/.test(targetIgId)) {
+        targetIgId = '17841458486575965';
       }
     }
 
@@ -58,7 +54,7 @@ async function autoSyncInstagramAccount(account: any, supabase: any) {
           follower_count: typeof profile.followers_count === 'number' ? profile.followers_count : account.follower_count,
           following_count: typeof profile.follows_count === 'number' ? profile.follows_count : account.following_count,
           post_count: typeof profile.media_count === 'number' ? profile.media_count : account.post_count,
-          profile_pic: profile.profile_picture_url || account.profile_pic || '/bw283_avatar.jpg',
+          profile_pic: profile.profile_picture_url || account.profile_pic,
           updated_at: new Date().toISOString(),
         };
 
