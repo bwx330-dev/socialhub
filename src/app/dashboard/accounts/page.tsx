@@ -110,6 +110,13 @@ export default function AccountsPage() {
       );
       window.history.replaceState({}, '', window.location.pathname);
       loadAccounts(false);
+    } else if (successParam === 'instagram_oauth' || successParam === 'instagram_connected' || successParam === 'instagram') {
+      toast.success(
+        `Berhasil terhubung ke Instagram Graph API (@${uName || 'akun'})! Metrik auto-sync real-time aktif.`,
+        { duration: 6000 }
+      );
+      window.history.replaceState({}, '', window.location.pathname);
+      loadAccounts(false);
     } else if (errorParam) {
       toast.error(`Koneksi API gagal: ${decodeURIComponent(errorParam)}`, {
         duration: 7000,

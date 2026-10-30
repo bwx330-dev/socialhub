@@ -2,8 +2,53 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { TikTokAPI } from '@/lib/tiktok';
+import { InstagramAPI } from '@/lib/instagram';
 
 export const dynamic = 'force-dynamic';
+
+async function autoSyncInstagramAccount(account: any, supabase: any) {
+  if (
+    !account.access_token ||
+    account.access_token === 'manual_token' ||
+    account.access_token === 'manual' ||
+    account.access_token.length < 20
+  ) {
+    return account;
+  }
+
+  const lastUpdated = account.updated_at ? new Date(account.updated_at).getTime() : 0;
+  const now = Date.now();
+  if (now - lastUpdated < 10000) {
+    return account;
+  }
+
+  try {
+    const igApi = new InstagramAPI(account.access_token, account.platform_user_id || 'me');
+    const profile = await igApi.getProfile();
+    if (profile && !profile.error) {
+      const updatedFields = {
+        follower_count: typeof profile.followers_count === 'number' ? profile.followers_count : account.follower_count,
+        following_count: typeof profile.follows_count === 'number' ? profile.follows_count : account.following_count,
+        post_count: typeof profile.media_count === 'number' ? profile.media_count : account.post_count,
+        profile_pic: profile.profile_picture_url || account.profile_pic,
+        updated_at: new Date().toISOString(),
+      };
+
+      await supabase
+        .from('connected_accounts')
+        .update(updatedFields)
+        .eq('id', account.id);
+
+      return {
+        ...account,
+        ...updatedFields,
+      };
+    }
+  } catch (err) {
+    console.error('Auto-sync Instagram failed:', err);
+  }
+  return account;
+}
 
 async function autoSyncTikTokAccount(account: any, supabase: any) {
   if (
@@ -77,9 +122,11 @@ export async function GET() {
 
     const syncAll = async (rawAccounts: any[]) => {
       const synced = await Promise.all(
-        rawAccounts.map((acc) =>
-          acc.platform === 'tiktok' ? autoSyncTikTokAccount(acc, supabase) : acc
-        )
+        rawAccounts.map((acc) => {
+          if (acc.platform === 'tiktok') return autoSyncTikTokAccount(acc, supabase);
+          if (acc.platform === 'instagram') return autoSyncInstagramAccount(acc, supabase);
+          return acc;
+        })
       );
       return synced.map(mapAccount);
     };
