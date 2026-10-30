@@ -12,6 +12,7 @@ import {
   FileText,
   AlertTriangle,
   X,
+  RefreshCw,
 } from 'lucide-react';
 import { Instagram, TikTok } from '@/components/ui/icons';
 import { Card } from '@/components/ui/card';
@@ -414,17 +415,17 @@ export default function AccountsPage() {
                     />
                     <div className="flex items-start gap-4 pt-2">
                       <div
-                        className={`flex h-12 w-12 items-center justify-center rounded-2xl shrink-0 ${
+                        className={`flex h-12 w-12 items-center justify-center rounded-full shrink-0 overflow-hidden ${
                           isIg
-                            ? 'bg-gradient-to-br from-[#833AB4]/20 via-[#E1306C]/20 to-[#F77737]/20 text-[#E1306C]'
-                            : 'bg-[#e6edf3]/10 text-white'
+                            ? 'bg-gradient-to-br from-[#833AB4]/20 via-[#E1306C]/20 to-[#F77737]/20 text-[#E1306C] ring-2 ring-[#E1306C]/40'
+                            : 'bg-[#e6edf3]/10 text-white ring-2 ring-white/20'
                         }`}
                       >
                         {account.profile_pic ? (
                           <img
                             src={account.profile_pic}
                             alt={account.username}
-                            className="h-12 w-12 rounded-2xl object-cover"
+                            className="h-full w-full object-cover rounded-full"
                           />
                         ) : isIg ? (
                           <Instagram className="h-6 w-6" />
@@ -587,12 +588,20 @@ export default function AccountsPage() {
               Gunakan Meta App (Instagram Tester) gratis tanpa verifikasi bisnis
             </p>
             {isIgApi ? (
-              <div className="flex flex-col items-center gap-1.5">
+              <div className="flex flex-col items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-[#3fb950]/30 bg-[#3fb950]/15 px-3 py-1.5 text-xs font-semibold text-[#3fb950]">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Akun Sudah Terhubung Resmi ({igAccount?.username})
                 </span>
                 <span className="text-[11px] text-[#8b949e]">Status Database & API Graph Aktif</span>
+                <Button
+                  size="sm"
+                  onClick={() => handleOAuthConnect('instagram')}
+                  className="mt-1 bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] hover:opacity-90 text-xs text-white"
+                >
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                  Hubungkan Ulang / Re-sync OAuth
+                </Button>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2">
@@ -602,7 +611,7 @@ export default function AccountsPage() {
                     onClick={() => handleOAuthConnect('instagram')}
                     className="bg-gradient-to-r from-[#833AB4] via-[#E1306C] to-[#F77737] hover:opacity-90 text-xs"
                   >
-                    OAuth Meta
+                    Hubungkan dengan OAuth Resmi
                   </Button>
                   <Button
                     size="sm"
@@ -632,7 +641,7 @@ export default function AccountsPage() {
               Client Key sudah terkonfigurasi di sistem SocialHub
             </p>
             {isTtApi ? (
-              <div className="flex flex-col items-center gap-1.5">
+              <div className="flex flex-col items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-[#3fb950]/30 bg-[#3fb950]/15 px-3 py-1.5 text-xs font-semibold text-[#3fb950]">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Akun Sudah Terhubung Resmi ({ttAccount?.username})
@@ -641,6 +650,15 @@ export default function AccountsPage() {
                   <span className="h-1.5 w-1.5 rounded-full bg-[#3fb950] animate-pulse"></span>
                   Auto-Sync Otomatis Aktif
                 </span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleOAuthConnect('tiktok')}
+                  className="mt-1 text-xs"
+                >
+                  <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                  Hubungkan Ulang OAuth
+                </Button>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2">
